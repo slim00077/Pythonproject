@@ -1,5 +1,6 @@
 from django.conf import settings
-from django.http import Http404, HttpResponseServerError
+from django.db import connection
+from django.http import Http404, HttpResponseServerError, JsonResponse
 from django.shortcuts import redirect, render
 from django.template import loader
 from django.utils import timezone
@@ -29,6 +30,17 @@ def home(request):
         'top_teams': [team for team in team_leaderboard(public_only=True) if team.points > 0][:3],
         'upcoming_events': upcoming,
     })
+
+
+def health(request):
+    """Liveness/readiness probe for Docker, CI and the hosting platform: 200 only if the database answers."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+    except Exception:
+        return JsonResponse({'status': 'error', 'database': 'down'}, status=503)
+    return JsonResponse({'status': 'ok', 'database': 'up'})
 
 
 def admin_root(request):

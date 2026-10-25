@@ -12,6 +12,7 @@
 <a class="nav-link {% if ns == 'community' %}active{% endif %}" href="{% url 'community:list' %}">{% icon 'calendar' %} Événements</a>
 
 <div class="nav-label">Mes engagements</div>
+<a class="nav-link {% if ns == 'ecoassistant' %}active{% endif %}" href="{% url 'ecoassistant:chat' %}">{% icon 'leaf' %} Eco-Assistant</a>
 <a class="nav-link {% if ns == 'actions' %}active{% endif %}" href="{% url 'actions:list' %}">{% icon 'leaf' %} Mes actions écologiques</a>
 <a class="nav-link {% if ns == 'goals' %}active{% endif %}" href="{% url 'goals:list' %}">{% icon 'target' %} Mes objectifs</a>
 <a class="nav-link {% if ns == 'gamification' and url_name == 'achievements' %}active{% endif %}" href="{% url 'gamification:achievements' %}">{% icon 'award' %} Points et badges</a>

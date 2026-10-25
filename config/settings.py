@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'community',
     'notifications',
     'analytics',
+    'ecoassistant',
 ]
 
 MIDDLEWARE = [
@@ -242,6 +243,10 @@ ECOTEAMS_DEFAULT_ROLE = 'Utilisateur'
 ECOTEAMS_TEAM_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000]
 ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_AGE_DAYS', '30'))
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
+
+# Gemini is optional: without a key, Eco-Assistant uses catalogue-only fallback advice.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash').strip()
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

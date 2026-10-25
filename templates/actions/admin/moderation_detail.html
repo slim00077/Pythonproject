@@ -44,6 +44,30 @@
   </div>
   <aside class="stack">
     <div class="card card-glass">
+      {% if submission.status == 'pending' %}
+        <div class="ai-validator-panel">
+          <div class="card-head"><h2>{% icon 'eye' %} AI Eco-Validator</h2><span class="pill tone-info">Assistant</span></div>
+          <p class="text-2 small">L’IA compare la photo, la description et l’action déclarée. Son rapport est une aide : la décision finale appartient toujours au modérateur.</p>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <button class="btn btn-secondary btn-block" type="submit" name="decision" value="ai_validate" {% if not submission.evidence %}disabled{% endif %}>{% icon 'scan' 18 %} Analyser la preuve avec l’IA</button>
+          </form>
+          {% if not submission.evidence %}<p class="small text-2 mt-2">Ajoutez une photo pour lancer l’analyse.</p>{% endif %}
+          {% if ai_report.error %}<div class="alert alert-warning mt-2">{% icon 'alert-triangle' %}<p>{{ ai_report.error }}</p></div>{% endif %}
+          {% if ai_report.confidence_score is not None %}
+            <div class="ai-report mt-3">
+              <div class="ai-report-title"><strong>Rapport IA</strong><span class="pill tone-warning">Vérification humaine obligatoire</span></div>
+              <div class="ai-confidence"><span>Confiance dans l’analyse visuelle</span><strong>{{ ai_report.confidence_score }}%</strong></div>
+              <div class="progress"><span style="width: {{ ai_report.confidence_score }}%"></span></div>
+              <h4>Éléments détectés</h4>
+              <ul class="list compact">{% for element in ai_report.detected_elements %}<li class="list-item">{% icon 'check-circle' 16 %}<span>{{ element }}</span></li>{% empty %}<li class="muted">Aucun élément exploitable détecté.</li>{% endfor %}</ul>
+              <h4>Analyse de cohérence</h4><p class="small">{{ ai_report.consistency_analysis }}</p>
+              <h4>Recommandation IA</h4><p class="small"><strong>{{ ai_report.recommendation_label }}</strong></p>
+              <h4>Limites de la preuve</h4><p class="small text-2">{{ ai_report.evidence_limitations }}</p>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
       <h2>{% icon 'shield-check' %} Décision</h2>
       {% if is_own %}
         <div class="alert alert-warning">{% icon 'lock' %}<p>Vous ne pouvez pas modérer vos propres déclarations.</p></div>

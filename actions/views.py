@@ -166,11 +166,15 @@ def moderation_detail(request, pk):
         ActionSubmission.objects.select_related('user', 'action_type', 'challenge', 'team', 'reviewed_by'), pk=pk
     )
     form = ModerationForm(request.POST or None)
+    ai_report = None
     if request.method == 'POST' and form.is_valid():
         decision = request.POST.get('decision')
         notes = form.cleaned_data['notes']
         try:
-            if decision == 'approve':
+            if decision == 'ai_validate':
+                ai_report = services.ai_validate_submission(submission)
+                messages.info(request, 'Rapport IA généré. La décision finale reste celle du modérateur.')
+            elif decision == 'approve':
                 services.approve_submission(request.user, submission, notes)
                 messages.success(request, f'Action validée : {submission.action_type.points} points attribués.')
             elif decision == 'reject':
@@ -183,12 +187,18 @@ def moderation_detail(request, pk):
                 raise BusinessRuleError('Décision inconnue.')
         except BusinessRuleError as error:
             messages.error(request, error.message)
-            return redirect('actions_admin:moderation_detail', pk=submission.pk)
-        next_pending = ActionSubmission.objects.filter(status=ActionSubmission.Status.PENDING).exclude(
-            user=request.user).order_by('created_at').first()
-        if next_pending and decision != 'revoke':
-            return redirect('actions_admin:moderation_detail', pk=next_pending.pk)
-        return redirect('actions_admin:moderation_list')
+            if decision == 'ai_validate':
+                ai_report = {'error': error.message}
+            else:
+                return redirect('actions_admin:moderation_detail', pk=submission.pk)
+        if decision == 'ai_validate':
+            pass
+        else:
+            next_pending = ActionSubmission.objects.filter(status=ActionSubmission.Status.PENDING).exclude(
+                user=request.user).order_by('created_at').first()
+            if next_pending and decision != 'revoke':
+                return redirect('actions_admin:moderation_detail', pk=next_pending.pk)
+            return redirect('actions_admin:moderation_list')
     history = ActionSubmission.objects.filter(user=submission.user).exclude(pk=submission.pk).select_related(
         'action_type')[:6]
     same_day = ActionSubmission.objects.filter(user=submission.user, performed_on=submission.performed_on).exclude(
@@ -198,6 +208,7 @@ def moderation_detail(request, pk):
         'logs': submission.moderation_logs.select_related('moderator'),
         'estimate': submission.action_type.estimate_co2(submission.quantity),
         'is_own': submission.user_id == request.user.pk,
+        'ai_report': ai_report,
     })
 
 

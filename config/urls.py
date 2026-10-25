@@ -28,6 +28,7 @@ urlpatterns = [
     path('', include('gamification.urls')),
     path('community/', include('community.urls')),
     path('notifications/', include('notifications.urls')),
+    path('', include('ecoassistant.urls')),
     # Back-office routes of the business modules
     path('admin/challenges/', include('challenges.admin_urls')),
     path('admin/actions/', include('actions.admin_urls')),

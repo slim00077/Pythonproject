@@ -1,0 +1,26 @@
+{% extends 'layouts/app.html' %}
+{% block title %}Eco-Assistant{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Eco-Assistant</h1><p class="page-sub">Un accompagnement personnalisé pour vos habitudes écologiques.</p></div><form method="post">{% csrf_token %}<button class="btn btn-secondary" name="clear" value="1" type="submit">Nouvelle conversation</button></form></div>
+<section class="card eco-chat-card">
+  <div class="eco-chat-intro"><span class="stat-icon">🌱</span><div><strong>Bonjour {{ user.first_name|default:user.username }} !</strong><p>Je peux vous conseiller sur l’énergie, l’eau, les déchets et la mobilité, puis vous proposer des actions réelles du catalogue EcoTeams.</p></div></div>
+  <div class="eco-chat-messages" aria-live="polite">
+    {% for message in history %}
+      <div class="eco-message eco-message-{{ message.role }}"><span class="eco-message-label">{% if message.role == 'user' %}Vous{% else %}Eco-Assistant{% endif %}</span><p>{{ message.content }}</p>
+        {% if message.recommendations %}<div class="eco-recommendations"><strong>Actions recommandées</strong>{% for action in message.recommendations %}<a class="eco-action-chip" href="{% url 'actions:create' %}?type={{ action.slug }}">{{ action.name }} <b>+{{ action.points }} pts</b></a>{% endfor %}</div>{% endif %}
+      </div>
+    {% empty %}<div class="eco-empty"><strong>Par où commencer ?</strong><p>Essayez : « Je veux réduire ma consommation d’électricité cette semaine. »</p></div>{% endfor %}
+  </div>
+  <form method="post" class="eco-chat-form" id="eco-chat-form">
+    {% csrf_token %}<label class="sr-only" for="question">Votre question</label><textarea id="question" name="question" rows="2" maxlength="2000" placeholder="Écrivez votre question ou objectif écologique…" required>{{ question }}</textarea><button class="btn btn-primary" type="submit" id="eco-send">Envoyer <span aria-hidden="true">➜</span></button>
+  </form>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}<script>
+const form = document.getElementById('eco-chat-form');
+const input = document.getElementById('question');
+if (form) form.addEventListener('submit', () => { const button = document.getElementById('eco-send'); button.disabled = true; button.textContent = 'Réflexion…'; });
+if (input) { input.focus(); input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } }); }
+</script>{% endblock %}
+

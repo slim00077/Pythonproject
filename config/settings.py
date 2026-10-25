@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     'community',
     'notifications',
     'analytics',
+    # EcoPulse — live environmental intelligence (no model, no migration)
+    'ecopulse',
 ]
 
 MIDDLEWARE = [
@@ -242,6 +244,22 @@ ECOTEAMS_DEFAULT_ROLE = 'Utilisateur'
 ECOTEAMS_TEAM_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000]
 ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_AGE_DAYS', '30'))
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
+
+
+# EcoPulse — environmental intelligence (Open-Meteo data + optional AI explanations)
+# The AI key is read from the environment only; without it the dashboard still works (rules only).
+ECOPULSE_AI_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+ECOPULSE_AI_MODEL = os.environ.get('ECOPULSE_AI_MODEL', 'claude-opus-5-5').strip()
+ECOPULSE_AI_TIMEOUT = int(os.environ.get('ECOPULSE_AI_TIMEOUT', '60'))
+ECOPULSE_AI_MAX_PER_HOUR = int(os.environ.get('ECOPULSE_AI_MAX_PER_HOUR', '6'))
+ECOPULSE_AI_CACHE_SECONDS = int(os.environ.get('ECOPULSE_AI_CACHE_SECONDS', '1800'))
+ECOPULSE_HTTP_TIMEOUT = int(os.environ.get('ECOPULSE_HTTP_TIMEOUT', '8'))
+ECOPULSE_CACHE_SECONDS = int(os.environ.get('ECOPULSE_CACHE_SECONDS', '900'))
+ECOPULSE_FORECAST_DAYS = 3
+ECOPULSE_MAX_PROVIDER_CALLS_PER_HOUR = int(os.environ.get('ECOPULSE_MAX_PROVIDER_CALLS_PER_HOUR', '200'))
+ECOPULSE_DEFAULT_LOCATION = {'name': 'Tunis, Tunisie', 'lat': 36.8065, 'lon': 10.1815}
+# Optional overrides of the classification bands, e.g. {'wind': [35, 55, 75]} (see ecopulse/rules.py).
+ECOPULSE_THRESHOLDS = {}
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

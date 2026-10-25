@@ -1,0 +1,64 @@
+/* EcoPulse — environmental intelligence dashboard. Extends the EcoTeams design system (cyan / blue / violet / amber). */
+.ecopulse-page { --accent: #42E8D5; --accent-rgb: 66, 232, 213; --accent-2: #5B8CFF; --accent-2-rgb: 91, 140, 255;
+  --on-accent: #04202a; --grad-accent: linear-gradient(135deg, #42E8D5 0%, #5B8CFF 100%); }
+.ecopulse-page .chart .line { stroke: var(--cyan); filter: drop-shadow(0 0 6px rgba(66, 232, 213, .5)); }
+.ecopulse-page .chart .point { stroke: var(--cyan); }
+.ecopulse-page .chart .point:hover, .ecopulse-page .chart .point:focus { fill: var(--cyan); }
+
+.ep-banner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 24px; align-items: start; }
+.ep-periods { display: flex; gap: 8px; }
+.ep-location { padding: 14px 16px; }
+.ep-location summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ep-fresh { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 12px 16px; margin-bottom: 16px; border-radius: 14px;
+  background: var(--surface-3); border: 1px solid var(--line-2); font-size: .86rem; color: var(--text-2); }
+.ep-fresh span { display: inline-flex; align-items: center; gap: 6px; }
+.ep-fresh.is-stale { border-color: rgba(255, 200, 87, .45); }
+
+.ep-hologram { text-align: center; }
+.ep-globe { position: relative; width: min(460px, 100%); aspect-ratio: 1; margin: 0 auto; }
+.ep-globe svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ep-globe-caption { position: absolute; inset: 0; display: grid; place-content: center; pointer-events: none; gap: 2px; }
+.ep-globe-caption strong { font-family: var(--font-display); font-size: 1.2rem; }
+.ep-node { cursor: pointer; outline: none; }
+.ep-node:hover circle:first-of-type, .ep-node:focus circle:first-of-type { fill-opacity: .32; }
+.ep-node-label { fill: var(--muted); font-size: 11px; letter-spacing: .08em; }
+.ep-node-value { fill: var(--text); font-size: 13px; font-weight: 600; }
+.ep-spin { transform-origin: 260px 260px; animation: ep-rotate 40s linear infinite; }
+.ep-pulse { transform-box: fill-box; transform-origin: center; animation: ep-pulse 3s ease-out infinite; }
+.ep-scan { animation: ep-scan 6s ease-in-out infinite alternate; }
+.ep-link { animation: ep-dash 6s linear infinite; }
+@keyframes ep-rotate { to { transform: rotate(360deg); } }
+@keyframes ep-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(5); opacity: 0; } }
+@keyframes ep-scan { from { transform: translateY(-90px); } to { transform: translateY(90px); } }
+@keyframes ep-dash { to { stroke-dashoffset: -40; } }
+.ep-verdict { font-weight: 600; margin: 8px 0 0; }
+
+.ep-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.ep-indicator { display: flex; flex-direction: column; gap: 4px; }
+.ep-indicator .stat-value small { font-size: .9rem; color: var(--muted); font-weight: 500; }
+.ep-level { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; border: 1px solid transparent; }
+.ep-bg-cyan { background: rgba(66, 232, 213, .12); color: var(--cyan); border-color: rgba(66, 232, 213, .3); }
+.ep-bg-blue { background: rgba(91, 140, 255, .14); color: #9DB8FF; border-color: rgba(91, 140, 255, .3); }
+.ep-bg-amber { background: rgba(255, 200, 87, .12); color: var(--amber); border-color: rgba(255, 200, 87, .3); }
+.ep-bg-red { background: rgba(255, 107, 107, .12); color: #FF9C9C; border-color: rgba(255, 107, 107, .3); }
+.ep-bg-muted { background: rgba(244, 247, 251, .06); color: var(--text-2); border-color: var(--line-2); }
+.ep-tone-cyan { color: var(--cyan); } .ep-tone-blue { color: #9DB8FF; } .ep-tone-amber { color: var(--amber); }
+.ep-tone-red { color: #FF9C9C; } .ep-tone-muted { color: var(--muted); }
+.tone-border-cyan { border-color: rgba(66, 232, 213, .3); } .tone-border-blue { border-color: rgba(91, 140, 255, .32); }
+.tone-border-amber { border-color: rgba(255, 200, 87, .4); } .tone-border-red { border-color: rgba(255, 107, 107, .45); }
+
+.ep-list { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--text-2); }
+.ep-event { padding: 12px; border: 1px solid var(--line-2); border-radius: 12px; margin-bottom: 10px; display: grid; gap: 4px; }
+.ep-sub { font-size: 1rem; margin: 16px 0 8px; }
+.ep-proposal { border: 1px solid rgba(155, 135, 245, .35); background: rgba(155, 135, 245, .06); border-radius: 14px; padding: 14px; margin: 10px 0; display: grid; gap: 8px; }
+.ep-proposal p { margin: 0; }
+.ep-loading { margin-top: 16px; display: grid; gap: 10px; }
+.ep-skeleton { height: 14px; border-radius: 8px; background: linear-gradient(90deg, rgba(120,160,255,.08), rgba(120,160,255,.22), rgba(120,160,255,.08)); background-size: 200% 100%; animation: ep-shimmer 1.4s linear infinite; }
+.ep-skeleton.short { width: 60%; }
+@keyframes ep-shimmer { to { background-position: -200% 0; } }
+.ep-attribution { margin: 8px 0 24px; }
+
+@media (max-width: 860px) { .ep-banner { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .ep-spin, .ep-pulse, .ep-scan, .ep-link, .ep-skeleton { animation: none !important; }
+}

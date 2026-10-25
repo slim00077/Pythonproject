@@ -59,6 +59,11 @@ class Event(models.Model):
         'objectif de participants', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10000)],
         help_text='Sert à afficher la progression d’une campagne.',
     )
+    actual_co2_saved_kg = models.DecimalField(
+        'CO₂ réellement économisé (kg)', max_digits=10, decimal_places=3, null=True, blank=True,
+        validators=[MinValueValidator(0)],
+        help_text='Résultat réel saisi après une campagne terminée.',
+    )
     status = models.CharField('statut', max_length=20, choices=Status.choices, default=Status.DRAFT)
     review_notes = models.TextField('commentaire de validation', max_length=1000, blank=True)
     reviewed_by = models.ForeignKey(
@@ -146,6 +151,29 @@ class Event(models.Model):
         return percent(max(0, elapsed), total)
 
 
+class CampaignImpactFactor(models.Model):
+    category = models.CharField('catégorie', max_length=20, choices=EcoCategory.choices, unique=True)
+    co2_kg_per_participant_day = models.DecimalField(
+        'CO₂ (kg par participant-jour)', max_digits=8, decimal_places=4,
+        validators=[MinValueValidator(0)],
+    )
+    points_per_participant_day = models.PositiveSmallIntegerField(
+        'points par participant-jour', validators=[MaxValueValidator(100)],
+    )
+    source = models.CharField('source / nature du facteur', max_length=255)
+    methodology = models.TextField('méthodologie et limites', max_length=1000)
+    is_active = models.BooleanField('actif', default=True)
+    updated_at = models.DateTimeField('mis à jour le', auto_now=True)
+
+    class Meta:
+        verbose_name = 'facteur d’impact de campagne'
+        verbose_name_plural = 'facteurs d’impact des campagnes'
+        ordering = ['category']
+
+    def __str__(self):
+        return self.get_category_display()
+
+
 class EventParticipation(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participations', verbose_name='événement')
     user = models.ForeignKey(
@@ -158,6 +186,10 @@ class EventParticipation(models.Model):
     )
     joined_at = models.DateTimeField('inscrit le', default=timezone.now)
     reminder_sent = models.BooleanField('rappel envoyé', default=False)
+    attended = models.BooleanField(
+        'présence confirmée', null=True, blank=True, default=None,
+        help_text='Laisser à confirmer tant que la présence n’a pas été vérifiée.',
+    )
 
     class Meta:
         verbose_name = 'participation à un événement'

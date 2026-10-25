@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+load_dotenv()  # Load .env file if present, but don't fail if it's missing
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -213,6 +214,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 ECOTEAMS_MAX_UPLOAD_MB = int(os.environ.get('ECOTEAMS_MAX_UPLOAD_MB', '5'))
 FILE_UPLOAD_PERMISSIONS = 0o644
+
+# Community AI helpers
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'template')
+AI_API_KEY = os.environ.get('AI_API_KEY', '')
+AI_MODEL = os.environ.get('AI_MODEL', 'gpt-4o-mini')
+AI_TIMEOUT = float(os.environ.get('AI_TIMEOUT', '10'))
+AI_API_BASE_URL = os.environ.get('AI_API_BASE_URL', 'https://api.openai.com/v1')
 
 
 # Security

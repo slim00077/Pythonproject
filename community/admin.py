@@ -1,13 +1,14 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Event, EventParticipation
+from .models import CampaignImpactFactor, Event, EventParticipation
 
 
 class ParticipationInline(admin.TabularInline):
     model = EventParticipation
     extra = 0
     readonly_fields = ('joined_at',)
+    fields = ('user', 'team', 'joined_at', 'reminder_sent', 'attended')
     autocomplete_fields = ('user',)
 
 
@@ -40,7 +41,7 @@ class EventAdmin(admin.ModelAdmin):
     fieldsets = (
         ('À propos', {'fields': ('title', 'slug', 'kind', 'category', 'description', 'target_audience')}),
         ('Lieu et dates', {'fields': ('format', 'location', 'online_url', 'start_at', 'end_at')}),
-        ('Participation', {'fields': ('capacity', 'participation_goal')}),
+        ('Participation', {'fields': ('capacity', 'participation_goal', 'actual_co2_saved_kg')}),
         ('Validation', {'fields': ('status', 'organizer', 'reviewed_by', 'review_notes', 'published_at')}),
     )
 
@@ -51,6 +52,13 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(EventParticipation)
 class EventParticipationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'event', 'team', 'joined_at', 'reminder_sent')
-    list_filter = ('event',)
+    list_display = ('user', 'event', 'team', 'joined_at', 'attended', 'reminder_sent')
+    list_filter = ('event', 'attended')
     search_fields = ('user__username', 'event__title')
+
+
+@admin.register(CampaignImpactFactor)
+class CampaignImpactFactorAdmin(admin.ModelAdmin):
+    list_display = ('category', 'co2_kg_per_participant_day', 'points_per_participant_day', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('source', 'methodology')

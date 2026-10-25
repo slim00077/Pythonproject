@@ -2,12 +2,14 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from core.decorators import any_permission_required
@@ -15,7 +17,15 @@ from core.exceptions import BusinessRuleError
 from core.permissions import REVIEW_EVENTS
 
 from . import services
-from .forms import EventFilterForm, EventForm, EventReviewForm
+from .ai.impact import compare_campaign_impact, estimate_campaign_impact
+from .ai.participation import predict_event_participation
+from .ai.recommender import recommend_events
+from .ai.providers import generate_event_content
+from .ai.tagger import suggest_event_tags
+from .forms import (
+    CampaignImpactResultForm, EventAIGenerationForm, EventAttendanceForm, EventFilterForm, EventForm,
+    EventReviewForm, EventTagSuggestionForm,
+)
 from .models import Event, EventParticipation
 
 
@@ -60,6 +70,7 @@ def event_list(request):
     ).annotate(participant_total=Count('participations'))[:3]
     return render(request, 'community/event_list.html', {
         'form': form, 'page': page, 'joined': joined, 'campaigns': campaigns,
+        'recommendations': recommend_events(request.user),
         'can_create': services.can_create(request.user), 'scope': scope,
     })
 
@@ -81,6 +92,16 @@ def my_events(request):
 @login_required
 def event_detail(request, slug):
     event = _visible_event(request, slug)
+    is_organizer = services.is_event_manager(request.user, event)
+    impact_estimate = estimate_campaign_impact(event)
+    participation_forecast = (
+        predict_event_participation(event)
+        if is_organizer and event.status == Event.Status.PUBLISHED and not event.has_ended else None
+    )
+    at_risk_participations = (
+        participation_forecast.at_risk_participations if participation_forecast else ()
+    )
+    risk_reminder_count = sum(not item.reminder_sent for item in at_risk_participations)
     participations = event.participations.select_related('user', 'team')
     team_rows = (
         participations.filter(team__isnull=False).values('team__name', 'team__slug')
@@ -92,11 +113,26 @@ def event_detail(request, slug):
         'participant_total': participations.count(),
         'team_rows': team_rows,
         'is_participant': participations.filter(user=request.user).exists(),
-        'is_organizer': services.is_event_manager(request.user, event),
+        'is_organizer': is_organizer,
         'can_edit': services.can_edit(request.user, event),
         'can_delete': services.can_delete(request.user, event),
         'can_cancel': services.can_cancel(request.user, event),
         'can_review': services.can_review(request.user),
+        'impact_estimate': impact_estimate,
+        'impact_comparison': compare_campaign_impact(event, impact_estimate),
+        'can_record_impact': (
+            is_organizer and event.kind == Event.Kind.CAMPAIGN and event.has_ended
+            and event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+        ),
+        'impact_form': CampaignImpactResultForm(
+            initial={'actual_co2_saved_kg': event.actual_co2_saved_kg}
+        ),
+        'participation_forecast': participation_forecast,
+        'risk_reminder_count': risk_reminder_count,
+        'can_manage_attendance': (
+            is_organizer and event.end_at < timezone.now()
+            and event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+        ),
     })
 
 
@@ -113,7 +149,9 @@ def event_create(request):
         event = services.create_event(request.user, form)
         messages.success(request, 'Brouillon enregistré. Soumettez-le à validation pour le publier.')
         return redirect(event)
-    return render(request, 'community/event_form.html', {'form': form, 'is_create': True})
+    return render(request, 'community/event_form.html', {
+        'form': form, 'is_create': True, 'can_generate_ai': services.can_create(request.user),
+    })
 
 
 @login_required
@@ -126,7 +164,68 @@ def event_update(request, slug):
         services.update_event(request.user, event, form)
         messages.success(request, 'Événement mis à jour.')
         return redirect(event)
-    return render(request, 'community/event_form.html', {'form': form, 'event': event, 'is_create': False})
+    return render(request, 'community/event_form.html', {
+        'form': form, 'event': event, 'is_create': False,
+        'can_generate_ai': services.is_event_manager(request.user, event),
+    })
+
+
+def _allow_ai_generation(user):
+    key = f'community:ai-generation:{user.pk}'
+    if cache.add(key, 1, timeout=60):
+        return True
+    try:
+        return cache.incr(key) <= 5
+    except ValueError:
+        return cache.add(key, 1, timeout=60)
+
+
+@login_required
+@require_POST
+@csrf_protect
+def event_ai_generate(request):
+    form = EventAIGenerationForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({
+            'error': 'Vérifiez le titre, la catégorie, la date et le lieu avant de générer le contenu.',
+            'fields': {name: [str(error) for error in errors] for name, errors in form.errors.items()},
+        }, status=400)
+    event_slug = form.cleaned_data['event_slug']
+    if event_slug:
+        event = get_object_or_404(Event, slug=event_slug)
+        if not services.is_event_manager(request.user, event) or not services.can_edit(request.user, event):
+            return JsonResponse({'error': 'Seul l’organisateur peut utiliser cet assistant.'}, status=403)
+    elif not services.can_create(request.user):
+        return JsonResponse({'error': 'Seuls les organisateurs peuvent utiliser cet assistant.'}, status=403)
+    if not _allow_ai_generation(request.user):
+        return JsonResponse({
+            'error': 'Limite atteinte : vous pouvez demander au maximum 5 générations par minute.',
+        }, status=429)
+
+    details = {name: form.cleaned_data[name] for name in ('title', 'category', 'start_at', 'location')}
+    content, provider = generate_event_content(details)
+    return JsonResponse({
+        'description': content.description,
+        'program': content.program,
+        'hashtags': content.hashtags,
+        'provider': provider,
+    })
+
+
+@login_required
+@require_POST
+@csrf_protect
+def event_tag_suggestions(request):
+    if not services.can_create(request.user):
+        return JsonResponse({'error': 'Seuls les organisateurs peuvent suggérer des tags.'}, status=403)
+    form = EventTagSuggestionForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({'error': form.errors.as_text()}, status=400)
+    result = suggest_event_tags(
+        form.cleaned_data['title'],
+        form.cleaned_data['description'],
+    )
+    return JsonResponse(result)
 
 
 @login_required
@@ -184,6 +283,86 @@ def event_cancel(request, slug):
     event = _visible_event(request, slug)
     return _run(request, services.cancel_event, 'L’événement a été annulé et les participants prévenus.', event,
                 request.POST.get('reason', '')[:500])
+
+
+@login_required
+@require_POST
+def event_record_impact(request, slug):
+    event = _visible_event(request, slug)
+    if not services.is_event_manager(request.user, event):
+        raise PermissionDenied
+    form = CampaignImpactResultForm(request.POST)
+    if form.is_valid():
+        try:
+            services.record_campaign_impact(
+                request.user, event, form.cleaned_data['actual_co2_saved_kg'],
+            )
+        except BusinessRuleError as error:
+            messages.error(request, error.message)
+        else:
+            messages.success(request, 'Le résultat réel de la campagne a été enregistré.')
+    else:
+        messages.error(request, 'Saisissez un résultat réel valide, supérieur ou égal à 0 kg.')
+    return redirect(event)
+
+
+@login_required
+def event_attendance(request, slug):
+    event = _visible_event(request, slug)
+    if not services.is_event_manager(request.user, event):
+        raise PermissionDenied
+    if (
+        event.end_at >= timezone.now()
+        or event.status not in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    ):
+        messages.error(request, 'Les présences pourront être enregistrées après l’événement.')
+        return redirect(event)
+
+    if request.method == 'POST':
+        participation = get_object_or_404(
+            EventParticipation, pk=request.POST.get('participation_id'), event=event,
+        )
+        form = EventAttendanceForm(request.POST, prefix=f'attendance-{participation.pk}')
+        if form.is_valid():
+            attendance = {'present': True, 'absent': False, 'unknown': None}
+            try:
+                services.record_event_attendance(
+                    request.user, event, participation, attendance[form.cleaned_data['attended']],
+                )
+            except BusinessRuleError as error:
+                messages.error(request, error.message)
+            else:
+                messages.success(request, 'La présence a été mise à jour.')
+        else:
+            messages.error(request, 'Choisissez un état de présence valide.')
+        page = request.POST.get('page', '1')
+        return redirect(f'{request.path}?page={page}')
+
+    page = Paginator(
+        event.participations.select_related('user').order_by('user__username'), 50
+    ).get_page(request.GET.get('page'))
+    attendance_choices = {True: 'present', False: 'absent', None: 'unknown'}
+    for participation in page.object_list:
+        participation.attendance_form = EventAttendanceForm(
+            initial={'attended': attendance_choices[participation.attended]},
+            prefix=f'attendance-{participation.pk}',
+        )
+    return render(request, 'community/event_attendance.html', {'event': event, 'page': page})
+
+
+@login_required
+@require_POST
+def event_send_risk_reminders(request, slug):
+    event = _visible_event(request, slug)
+    if not services.is_event_manager(request.user, event):
+        raise PermissionDenied
+    try:
+        sent = services.send_absence_risk_reminders(request.user, event)
+    except BusinessRuleError as error:
+        messages.error(request, error.message)
+    else:
+        messages.success(request, f'{sent} rappel(s) envoyé(s) aux personnes à risque.')
+    return redirect(event)
 
 
 # --- Back-office ---------------------------------------------------------------

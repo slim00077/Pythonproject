@@ -27,6 +27,33 @@
   </div>
 {% endif %}
 
+{% if recommendations %}
+  <section class="mb-3" aria-labelledby="recommendations-title">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">{% icon 'sparkles' 14 %} Sélection personnalisée</span>
+        <h2 id="recommendations-title">Recommandé pour vous</h2>
+      </div>
+    </div>
+    <div class="grid grid-3">
+      {% for recommendation in recommendations %}
+        <article class="card card-glow card-hover">
+          <div class="row mb-1">
+            <span class="pill tone-{% if recommendation.event.kind == 'campaign' %}info{% else %}lime{% endif %}">{{ recommendation.event.get_kind_display }}</span>
+            <span class="cat">{% icon recommendation.event.category|category_icon 14 %} {{ recommendation.event.get_category_display }}</span>
+          </div>
+          <a class="entity-title" href="{{ recommendation.event.get_absolute_url }}">{{ recommendation.event.title }}</a>
+          <p class="small muted mt-1">{{ recommendation.reason }}</p>
+          <div class="entity-meta">
+            <span>{% icon 'calendar' 14 %} {{ recommendation.event.start_at|date:'d/m/Y H:i' }}</span>
+            <span>{% if recommendation.event.format == 'online' %}{% icon 'globe' 14 %} En ligne{% else %}{% icon 'map-pin' 14 %} {{ recommendation.event.location|truncatechars:30 }}{% endif %}</span>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
 <form class="filters" method="get" data-autosubmit>
   {% if scope %}<input type="hidden" name="scope" value="{{ scope }}">{% endif %}
   {% include 'partials/field.html' with field=form.q %}

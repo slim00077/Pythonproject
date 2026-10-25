@@ -10,14 +10,15 @@
   </div>
   <div class="page-actions">
     <a class="btn btn-ghost" href="{% url 'gamification:achievements' %}">{% icon 'award' 18 %} Mes badges</a>
+    <a class="btn btn-secondary" href="{% url 'goals:studio' %}">{% icon 'sparkles' 18 %} Créer avec l’IA</a>
     <a class="btn btn-primary" href="{% url 'goals:create' %}">{% icon 'plus' 18 %} Nouvel objectif</a>
   </div>
 </div>
-<nav class="tabs" aria-label="Filtrer par statut">
+<nav class="tabs" aria-label="Filtrer les objectifs par statut">
   {% for value, label in statuses %}
-    <a class="tab {% if status == value %}active{% endif %}" href="?status={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>
+    <a class="tab {% if status == value %}active{% endif %}" href="?status={{ value }}"{% if status == value %} aria-current="page"{% endif %}>{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>
   {% endfor %}
-  <a class="tab {% if status == 'all' %}active{% endif %}" href="?status=all">Tous <span class="count">{{ total }}</span></a>
+  <a class="tab {% if status == 'all' %}active{% endif %}" href="?status=all"{% if status == 'all' %} aria-current="page"{% endif %}>Tous <span class="count">{{ total }}</span></a>
 </nav>
 {% if goals %}
   <div class="grid grid-3">
@@ -40,7 +41,7 @@
         </div>
         <div class="entity-foot">
           <span class="small muted">{% icon 'calendar' 14 %} Échéance : {{ goal.deadline|date:'d/m/Y' }}{% if goal.status == 'active' and goal.days_left >= 0 %} · J-{{ goal.days_left }}{% endif %}</span>
-          <a class="btn btn-ghost btn-sm" href="{{ goal.get_absolute_url }}">Suivre {% icon 'arrow-right' 14 %}</a>
+          <a class="btn btn-ghost btn-sm" href="{{ goal.get_absolute_url }}">Suivre<span class="sr-only"> {{ goal.title }}</span> {% icon 'arrow-right' 14 %}</a>
         </div>
       </article>
     {% endfor %}

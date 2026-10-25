@@ -244,6 +244,25 @@ ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_A
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
 
 
+# Coach IA des objectifs (goals/ai.py). Les clés ne sont JAMAIS dans le code : variables d'environnement.
+# Fournisseur : « gemini » (GEMINI_API_KEY) ou « anthropic » (ANTHROPIC_API_KEY). Par défaut, Gemini si une
+# clé Gemini est définie, sinon Anthropic. Sans clé, la fonctionnalité affiche un message explicite.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY') or ''
+ECOTEAMS_AI_ENABLED = env_bool('ECOTEAMS_AI_ENABLED', default=True)
+ECOTEAMS_AI_PROVIDER = os.environ.get('ECOTEAMS_AI_PROVIDER', '').strip().lower() or (
+    'gemini' if GEMINI_API_KEY else 'anthropic'
+)
+ECOTEAMS_AI_MODEL = os.environ.get('ECOTEAMS_AI_MODEL', '') or (
+    'gemini-flash-lite-latest' if ECOTEAMS_AI_PROVIDER == 'gemini' else 'claude-opus-5-5'
+)
+ECOTEAMS_AI_EFFORT = os.environ.get('ECOTEAMS_AI_EFFORT', 'low')  # Anthropic uniquement
+ECOTEAMS_AI_TIMEOUT_SECONDS = float(os.environ.get('ECOTEAMS_AI_TIMEOUT_SECONDS', '45'))
+ECOTEAMS_AI_DAILY_LIMIT = int(os.environ.get('ECOTEAMS_AI_DAILY_LIMIT', '10'))
+# True : l'appel se fait dans un thread d'arrière-plan (la requête HTTP rend la main tout de suite).
+# False : appel synchrone (utilisé par les tests).
+ECOTEAMS_AI_BACKGROUND = env_bool('ECOTEAMS_AI_BACKGROUND', default=True)
+
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGGING = {

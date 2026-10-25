@@ -1,10 +1,10 @@
 {% extends 'layouts/app.html' %}
-{% load eco_tags %}
+{% load eco_tags static %}
 {% block title %}{{ goal.title }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <nav class="breadcrumb"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {{ goal.title }}</nav>
+    <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {{ goal.title }}</nav>
     <h1>{{ goal.title }}</h1>
     <div class="row">
       <span class="pill tone-{% if goal.is_overdue %}warning{% else %}{{ goal.status|status_tone }}{% endif %}">{% if goal.is_overdue %}En retard{% else %}{{ goal.get_status_display }}{% endif %}</span>
@@ -13,8 +13,8 @@
     </div>
   </div>
   <div class="page-actions">
-    <a class="btn btn-secondary" href="{% url 'goals:update' goal.pk %}">{% icon 'edit' 18 %} Modifier</a>
-    <a class="btn btn-danger" href="{% url 'goals:delete' goal.pk %}">{% icon 'trash' 18 %} Supprimer</a>
+    <a class="btn btn-secondary" href="{% url 'goals:update' goal.pk %}">{% icon 'edit' 18 %} Modifier<span class="sr-only"> l’objectif {{ goal.title }}</span></a>
+    <a class="btn btn-danger" href="{% url 'goals:delete' goal.pk %}">{% icon 'trash' 18 %} Supprimer<span class="sr-only"> l’objectif {{ goal.title }}</span></a>
   </div>
 </div>
 <div class="split">
@@ -32,15 +32,15 @@
   </div>
   <aside class="card card-glass">
     {% if goal.status == 'abandoned' %}
-      <h3>{% icon 'clock' 18 %} Objectif en pause</h3>
+      <h2 class="h3">{% icon 'clock' 18 %} Objectif en pause</h2>
       <p class="text-2 small">Réactivez-le pour reprendre le suivi.</p>
       <form method="post" action="{% url 'goals:toggle' goal.pk %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit">{% icon 'refresh' 18 %} Réactiver</button></form>
     {% elif goal.is_automatic %}
-      <h3>{% icon 'refresh' 18 %} Suivi automatique</h3>
+      <h2 class="h3">{% icon 'refresh' 18 %} Suivi automatique</h2>
       <p class="text-2 small">La progression est calculée à partir de vos {% if goal.tracking_mode == 'points' %}points inscrits au registre{% else %}actions validées par la modération{% endif %}{% if goal.category %} dans la catégorie « {{ goal.get_category_display }} »{% endif %}, entre le {{ goal.start_date|date:'d/m' }} et le {{ goal.deadline|date:'d/m/Y' }}. Elle ne peut pas être modifiée à la main.</p>
       <a class="btn btn-primary btn-block" href="{% url 'actions:create' %}">{% icon 'plus' 18 %} Déclarer une action</a>
     {% else %}
-      <h3>{% icon 'edit' 18 %} Mettre à jour ma progression</h3>
+      <h2 class="h3">{% icon 'edit' 18 %} Mettre à jour ma progression</h2>
       <form method="post" action="{% url 'goals:progress' goal.pk %}" novalidate>
         {% csrf_token %}
         {% include 'partials/form_fields.html' with form=progress_form %}
@@ -52,4 +52,31 @@
     {% endif %}
   </aside>
 </div>
+{% if ai_enabled and goal.status != 'abandoned' %}
+<section class="card card-glass mt-3 goal-coach" id="coach" aria-labelledby="coach-title"
+         data-request-url="{% url 'goals:advice_request' goal.pk %}"
+         {% if advice and advice.status == 'pending' %}data-status-url="{% url 'goals:advice_status' goal.pk advice.pk %}"{% endif %}>
+  <div class="card-head">
+    <h2 id="coach-title" class="h3">{% icon 'zap' 18 %} Coach IA</h2>
+    <button class="btn btn-secondary btn-sm" type="button" id="coach-button" aria-describedby="coach-note">
+      {% icon 'refresh' 16 %} <span id="coach-button-label">Obtenir un conseil</span>
+    </button>
+  </div>
+  <p class="small text-2" id="coach-note">Conseil généré par une IA à partir de vos chiffres (sans nom ni e-mail). Il est indicatif : il ne modifie ni vos points ni vos objectifs.</p>
+  <div id="coach-result" role="status" aria-live="polite" aria-atomic="true">
+    {% if advice and advice.status == 'done' %}
+      <div class="prose coach-text" id="coach-text">{{ advice.content|linebreaksbr }}</div>
+    {% elif advice and advice.status == 'failed' %}
+      <div class="alert alert-danger" id="coach-error">{% icon 'alert-triangle' %}<p>{{ advice.error }}</p></div>
+    {% endif %}
+  </div>
+  <div class="row mt-1" id="coach-rating" {% if not advice or advice.status != 'done' %}hidden{% endif %}
+       data-rate-url="{% if advice %}{% url 'goals:advice_rate' goal.pk advice.pk %}{% endif %}">
+    <span class="small text-2" id="coach-rating-label">Ce conseil vous est-il utile ?</span>
+    <button class="btn btn-ghost btn-sm" type="button" data-helpful="1" aria-pressed="{% if advice and advice.helpful is True %}true{% else %}false{% endif %}">Oui</button>
+    <button class="btn btn-ghost btn-sm" type="button" data-helpful="0" aria-pressed="{% if advice and advice.helpful is False %}true{% else %}false{% endif %}">Non</button>
+  </div>
+</section>
+{% endif %}
 {% endblock %}
+{% block scripts %}{% if ai_enabled %}<script src="{% static 'js/goal_coach.js' %}?v=2" defer></script>{% endif %}{% endblock %}

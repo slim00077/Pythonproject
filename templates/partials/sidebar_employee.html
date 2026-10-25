@@ -14,7 +14,6 @@
 <a class="nav-link {% if ns == 'analytics' and url_name == 'leaderboard' %}active{% endif %}" href="{% url 'analytics:leaderboard' %}{% if nav.has_org %}?scope=org{% endif %}">{% icon 'trophy' %} Classement des équipes</a>
 
 <div class="nav-label">Ma contribution</div>
-<a class="nav-link {% if ns == 'ecoassistant' %}active{% endif %}" href="{% url 'ecoassistant:chat' %}">{% icon 'leaf' %} Eco-Assistant</a>
 <a class="nav-link {% if ns == 'actions' %}active{% endif %}" href="{% url 'actions:create' %}">{% icon 'plus' %} Déclarer une action</a>
 <a class="nav-link {% if ns == 'gamification' and url_name == 'achievements' %}active{% endif %}" href="{% url 'gamification:achievements' %}">{% icon 'award' %} Mes réussites</a>
 <a class="nav-link {% if ns == 'accounts' and url_name|slice:':7' == 'profile' %}active{% endif %}" href="{% url 'accounts:profile' %}">{% icon 'user' %} Mon profil</a>

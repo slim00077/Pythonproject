@@ -23,7 +23,6 @@
 {% endif %}
 
 <div class="nav-label">Explorer</div>
-<a class="nav-link {% if ns == 'ecoassistant' %}active{% endif %}" href="{% url 'ecoassistant:chat' %}">{% icon 'leaf' %} Eco-Assistant</a>
 <a class="nav-link {% if ns == 'community' %}active{% endif %}" href="{% url 'community:list' %}">{% icon 'search' %} Événements publics</a>
 <a class="nav-link {% if ns == 'analytics' and url_name == 'leaderboard' %}active{% endif %}" href="{% url 'analytics:leaderboard' %}">{% icon 'trophy' %} Classement</a>
 <a class="nav-link {% if ns == 'accounts' and url_name|slice:':7' == 'profile' %}active{% endif %}" href="{% url 'accounts:profile' %}">{% icon 'user' %} Mon profil</a>

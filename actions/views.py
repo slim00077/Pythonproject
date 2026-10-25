@@ -20,6 +20,29 @@ from .models import ActionSubmission, EcoActionType
 
 @login_required
 def submission_list(request):
+    assistant_history = request.session.get('ecoassistant_history', [])
+    assistant_error = None
+    if request.method == 'POST' and 'assistant_question' in request.POST:
+        from ecoassistant.services import AssistantError, ask
+
+        question = request.POST.get('assistant_question', '').strip()
+        if request.POST.get('clear_assistant'):
+            request.session.pop('ecoassistant_history', None)
+            assistant_history = []
+        else:
+            try:
+                answer, recommendations = ask(request.user, question, assistant_history)
+                assistant_history.extend([
+                    {'role': 'user', 'content': question},
+                    {'role': 'assistant', 'content': answer,
+                     'recommendations': [
+                         {'name': action.name, 'points': action.points, 'slug': action.slug}
+                         for action in recommendations
+                     ]},
+                ])
+                request.session['ecoassistant_history'] = assistant_history[-10:]
+            except AssistantError as error:
+                assistant_error = str(error)
     status = request.GET.get('status', '')
     submissions = ActionSubmission.objects.filter(user=request.user).select_related('action_type', 'challenge')
     counts = dict(submissions.order_by().values_list('status').annotate(total=Count('pk')))
@@ -32,6 +55,8 @@ def submission_list(request):
     return render(request, 'actions/submission_list.html', {
         'page': page, 'status': status, 'counts': counts, 'totals': totals,
         'statuses': ActionSubmission.Status.choices,
+        'assistant_history': assistant_history,
+        'assistant_error': assistant_error,
     })
 
 

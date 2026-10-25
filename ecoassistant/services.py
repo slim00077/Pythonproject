@@ -40,6 +40,20 @@ def _catalogue_context(actions):
     ) or '- No active ecological action is currently available.'
 
 
+def _parse_json_response(text):
+    cleaned = (text or '').strip()
+    if cleaned.startswith('```'):
+        cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\s*```$', '', cleaned).strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r'\{.*\}', cleaned, flags=re.DOTALL)
+        if not match:
+            raise
+        return json.loads(match.group(0))
+
+
 def ask(user, question, history=None):
     question = (question or '').strip()
     if not question:
@@ -119,7 +133,7 @@ Conversation récente :
         finally:
             client.close()
             http_client.close()
-        data = json.loads(response.text or '{}')
+        data = _parse_json_response(response.text)
         answer = str(data.get('answer', '')).strip() or fallback_answer
         requested_slugs = data.get('recommended_slugs', [])
         if not isinstance(requested_slugs, list):

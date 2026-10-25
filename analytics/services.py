@@ -66,8 +66,13 @@ def annotate_team_stats(queryset):
     )
 
 
-def team_leaderboard(period='all', category='', sort='points'):
-    """Teams ranked by the points recorded in the ledger (competition ranking)."""
+def team_leaderboard(period='all', category='', sort='points', organization=None, viewer=None, public_only=False):
+    """Teams ranked by the points recorded in the ledger (competition ranking).
+
+    ``organization`` restricts the board to the workplace teams of one organization;
+    ``viewer`` hides the workplace teams of organizations the viewer does not belong to
+    (administrators see everything); ``public_only`` is used by the public landing page.
+    """
     since = period_start(period)
     ledger = PointTransaction.objects.filter(team=OuterRef('pk'))
     actions = ActionSubmission.objects.filter(team=OuterRef('pk'), status=ActionSubmission.Status.APPROVED)
@@ -95,6 +100,12 @@ def team_leaderboard(period='all', category='', sort='points'):
         )
         .order_by('-points', 'name')
     )
+    if organization is not None:
+        teams = teams.filter(organization=organization)
+    elif public_only:
+        teams = teams.filter(organization__isnull=True)
+    elif viewer is not None and not viewer.is_superuser:
+        teams = teams.filter(Q(organization__isnull=True) | Q(organization_id=viewer.affiliation_id))
     rows = list(teams)
     rank, previous = 0, None
     for index, team in enumerate(rows, start=1):
@@ -120,7 +131,8 @@ def user_leaderboard(period='all', limit=10):
     since = period_start(period)
     condition = Q(point_transactions__created_at__gte=since) if since else Q()
     return list(
-        User.objects.filter(is_active=True)
+        # Employees never appear in the individual board: their results stay private to their organization.
+        User.objects.filter(is_active=True).exclude(organization_type=User.OrganizationType.EMPLOYEE)
         .annotate(total=Coalesce(Sum('point_transactions__amount', filter=condition), 0))
         .filter(total__gt=0)
         .order_by('-total', 'username')[:limit]
@@ -279,7 +291,17 @@ def user_dashboard(user):
             Event.objects.filter(participations__user=user, status=Event.Status.PUBLISHED, end_at__gte=timezone.now())
             .order_by('start_at')[:3]
         ),
-        'suggested_challenges': suggested_challenges(user),
+        'suggested_challenges': suggested_challenges(user, limit=4),
+        'recent_actions': list(submissions.select_related('action_type').order_by('-created_at')[:5]),
+        'team_contribution': percent(
+            ledger.filter(team=team).aggregate(total=Coalesce(Sum('amount'), 0))['total'],
+            PointTransaction.objects.filter(team=team).aggregate(total=Coalesce(Sum('amount'), 0))['total'],
+        ) if team else 0,
+        'team_achievements': list(
+            ActivityLog.objects.filter(
+                team=team, verb__in=[ActivityLog.Verb.CHALLENGE_COMPLETED, ActivityLog.Verb.BADGE_UNLOCKED]
+            ).select_related('actor')[:4]
+        ) if team else [],
     }
 
 
@@ -345,6 +367,7 @@ def admin_overview():
         'challenge_completions': ChallengeParticipation.objects.filter(
             status=ChallengeParticipation.Status.COMPLETED).count(),
         'event_participations': EventParticipation.objects.count(),
+        'badge_awards': UserBadge.objects.count(),
         'upcoming_events': Event.objects.filter(status=Event.Status.PUBLISHED, start_at__gte=timezone.now()).count(),
         'weekly_points': weekly_series(ledger.filter(amount__gt=0), 'created_at', 8, 'amount'),
         'weekly_users': weekly_series(User.objects.all(), 'date_joined', 8),

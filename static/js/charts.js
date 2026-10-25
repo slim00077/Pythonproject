@@ -6,10 +6,16 @@
 
   var NS = 'http://www.w3.org/2000/svg';
   var TONES = {
-    lime: '#B7FF4A', success: '#22C55E', emerald: '#22C55E', cyan: '#42E8D5', info: '#42E8D5',
-    warning: '#FFC857', danger: '#FF6B6B', gold: '#FFD166', muted: '#86A096',
+    lime: '#B7FF4A', success: '#22C55E', emerald: '#22C55E', cyan: '#42E8D5', info: '#42E8D5', blue: '#5B8CFF',
+    violet: '#9B87F5', warning: '#FFC857', amber: '#FFC857', danger: '#FF6B6B', gold: '#FFD166', muted: '#8C98B5',
   };
-  var PALETTE = ['#B7FF4A', '#42E8D5', '#22C55E', '#FFD166', '#7DD3FC', '#F0ABFC', '#FCA5A5', '#A7F3D0'];
+  // Categorical palette: ecology (green), technology (cyan / blue), insight (violet), attention (amber).
+  var PALETTE = ['#22C55E', '#5B8CFF', '#42E8D5', '#FFC857', '#9B87F5', '#B7FF4A', '#FF8FA3', '#7DD3FC'];
+
+  function cssVar(name, fallback) {
+    var value = getComputedStyle(document.body).getPropertyValue(name).trim();
+    return value || fallback;
+  }
 
   function node(name, attrs, parent) {
     var element = document.createElementNS(NS, name);
@@ -34,11 +40,11 @@
   function addDefs(svg) {
     var defs = node('defs', {}, svg);
     var bar = node('linearGradient', { id: 'eco-bar-gradient', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
-    node('stop', { offset: '0%', 'stop-color': '#B7FF4A' }, bar);
-    node('stop', { offset: '100%', 'stop-color': '#42E8D5', 'stop-opacity': '0.75' }, bar);
+    node('stop', { offset: '0%', 'stop-color': cssVar('--accent', '#B7FF4A') }, bar);
+    node('stop', { offset: '100%', 'stop-color': cssVar('--accent-2', '#42E8D5'), 'stop-opacity': '0.75' }, bar);
     var area = node('linearGradient', { id: 'eco-area-gradient', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
-    node('stop', { offset: '0%', 'stop-color': '#B7FF4A', 'stop-opacity': '0.28' }, area);
-    node('stop', { offset: '100%', 'stop-color': '#B7FF4A', 'stop-opacity': '0' }, area);
+    node('stop', { offset: '0%', 'stop-color': cssVar('--accent', '#B7FF4A'), 'stop-opacity': '0.28' }, area);
+    node('stop', { offset: '100%', 'stop-color': cssVar('--accent', '#B7FF4A'), 'stop-opacity': '0' }, area);
   }
 
   function tooltip(container) {
@@ -161,11 +167,12 @@
       var value = Math.max(0, Number(d.value) || 0);
       var label = node('text', { class: 'axis-label', x: 0, y: y + (stacked ? 11 : 16) }, svg);
       label.textContent = fitLabel(d.label, stacked ? width - valueW : labelW - 10);
-      node('rect', { x: labelW, y: barY, width: barSpace, height: 14, rx: 7, fill: 'rgba(236,247,241,0.06)' }, svg);
+      node('rect', { x: labelW, y: barY, width: barSpace, height: 14, rx: 7, fill: 'rgba(244,247,251,0.06)' }, svg);
       var bar = node('rect', { class: 'bar', x: labelW, y: barY, width: Math.max(value ? 4 : 0, barSpace * value / max), height: 14, rx: 7 }, svg);
       if (d.tone && TONES[d.tone]) { bar.setAttribute('style', 'fill:' + TONES[d.tone]); }
+      else if (opts.multicolor) { bar.setAttribute('style', 'fill:' + PALETTE[i % PALETTE.length]); }
       bindTip(bar, tip, labelW + barSpace * value / max, barY, d.label, format(d.value, opts.unit));
-      node('text', { class: 'axis-label', x: width, y: barY + 12, 'text-anchor': 'end', style: 'fill:#ECF7F1;font-weight:600' }, svg).textContent = format(d.value, opts.unit);
+      node('text', { class: 'axis-label', x: width, y: barY + 12, 'text-anchor': 'end', style: 'fill:#F4F7FB;font-weight:600' }, svg).textContent = format(d.value, opts.unit);
     });
     container.appendChild(svg);
   }
@@ -178,7 +185,7 @@
     var radius = 62;
     var circumference = 2 * Math.PI * radius;
     var svg = node('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, role: 'img', 'aria-label': opts.label || 'Répartition' });
-    node('circle', { cx: size / 2, cy: size / 2, r: radius, fill: 'none', stroke: 'rgba(236,247,241,0.06)', 'stroke-width': 18 }, svg);
+    node('circle', { cx: size / 2, cy: size / 2, r: radius, fill: 'none', stroke: 'rgba(244,247,251,0.06)', 'stroke-width': 18 }, svg);
     var offset = 0;
     var tip = tooltip(container);
     data.forEach(function (d, i) {
@@ -194,7 +201,7 @@
       bindTip(arc, tip, size / 2, 20, d.label, format(value, opts.unit) + ' (' + Math.round(value * 100 / total) + ' %)');
       offset += length;
     });
-    var center = node('text', { x: size / 2, y: size / 2 + 2, 'text-anchor': 'middle', style: 'fill:#ECF7F1;font:700 22px var(--font-display)' }, svg);
+    var center = node('text', { x: size / 2, y: size / 2 + 2, 'text-anchor': 'middle', style: 'fill:#F4F7FB;font:700 22px var(--font-display)' }, svg);
     center.textContent = format(total);
     node('text', { x: size / 2, y: size / 2 + 20, 'text-anchor': 'middle', class: 'axis-label' }, svg).textContent = opts.centerLabel || 'total';
     wrap.appendChild(svg);
@@ -235,6 +242,7 @@
       label: container.getAttribute('aria-label') || '',
       centerLabel: container.getAttribute('data-center-label') || '',
       height: parseInt(container.getAttribute('data-height') || '0', 10) || null,
+      multicolor: container.hasAttribute('data-multicolor'),
     });
   }
 

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     # Shared infrastructure
     'core',
+    'organizations',
     'accounts',
     # Member 1 — Teams and memberships
     'teams',

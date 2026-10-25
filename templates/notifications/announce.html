@@ -1,0 +1,29 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Annonces{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'send' 14 %} Centre de contrôle</span>
+    <h1>Notifications et annonces</h1>
+    <p class="page-sub">Envoyez une notification dans l’application à une catégorie de comptes ou aux membres d’une organisation. Les préférences des utilisateurs sont respectées pour les messages système importants.</p>
+  </div>
+</div>
+<div class="split">
+  <form method="post" class="card card-glass form-card" style="max-width:none">
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit" data-confirm="Envoyer cette annonce aux destinataires choisis ?">{% icon 'send' 18 %} Envoyer l’annonce</button>
+    </div>
+  </form>
+  <aside class="card">
+    <div class="card-head"><h3>{% icon 'history' %} Dernières annonces</h3></div>
+    <ul class="list">
+      {% for log in recent %}
+        <li class="list-item"><span class="list-icon">{% icon 'megaphone' 16 %}</span><span class="grow"><span class="title">{{ log.description|truncatechars:70 }}</span><span class="sub">{{ log.actor|display_name }} · {{ log.created_at|naturaltime }}</span></span></li>
+      {% empty %}<li class="muted small">Aucune annonce envoyée.</li>{% endfor %}
+    </ul>
+  </aside>
+</div>
+{% endblock %}

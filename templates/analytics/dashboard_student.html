@@ -1,0 +1,160 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Éco-hub étudiant{% endblock %}
+{% block content %}
+<section class="holo banner banner-student">
+  <div>
+    <span class="eyebrow">{% icon 'sun' 14 %} {% now 'l d F Y' %}</span>
+    <h1>Bonjour, {{ user.first_name|default:user.username }} !</h1>
+    <div class="banner-meta">
+      <span>{% icon 'users' 15 %} {% if stats.team %}Équipe <a href="{{ stats.team.get_absolute_url }}">{{ stats.team.name }}</a>{% else %}Pas encore d’équipe{% endif %}</span>
+      <span>{% icon 'flame' 15 %} Série : {{ stats.streak.current }} jour{{ stats.streak.current|pluralize }}</span>
+    </div>
+    <p>{% if stats.approved_count == 0 %}Votre première action validée lance votre aventure : choisissez un défi et passez à l’action.
+      {% elif stats.this_week_actions %}Belle dynamique : {{ stats.this_week_actions }} action{{ stats.this_week_actions|pluralize }} validée{{ stats.this_week_actions|pluralize }} cette semaine. Continuez, votre équipe compte sur vous !
+      {% else %}Une petite action aujourd’hui relance votre série. Chaque geste validé fait progresser votre équipe.{% endif %}</p>
+    <div class="row">
+      <a class="btn btn-primary btn-lg" href="{% url 'challenges:list' %}">{% icon 'flag' 20 %} Participer à un défi</a>
+      <a class="btn btn-secondary" href="{% url 'actions:create' %}">{% icon 'plus' 18 %} Déclarer une action</a>
+    </div>
+  </div>
+  <div class="banner-art">
+    {% percent stats.badges_count stats.badges_total as badge_pct %}
+    {% progress_ring badge_pct 128 10 'badges' 'lime' %}
+  </div>
+</section>
+
+{% if not stats.team %}
+  <div class="alert alert-warning mb-3">{% icon 'users' %}<div><p><strong>Vous n’avez pas encore d’équipe.</strong> Vos points personnels sont enregistrés, mais ils ne comptent pour une équipe qu’à partir de votre adhésion.</p>
+    <div class="row"><a class="btn btn-primary btn-sm" href="{% url 'teams:list' %}">{% icon 'search' 14 %} Explorer les équipes</a><a class="btn btn-ghost btn-sm" href="{% url 'teams:create' %}">{% icon 'plus' 14 %} Créer la mienne</a></div></div></div>
+{% endif %}
+
+<div class="stat-row">
+  <div class="card card-glow stat"><span class="stat-icon">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points validés</div><div class="stat-value" data-count-to="{{ stats.points }}">{{ stats.points }}</div><div class="stat-hint">{% if stats.rank %}{{ stats.rank|ordinal }} au classement individuel{% else %}Pas encore classé·e{% endif %}</div></div></div>
+  <div class="card stat"><span class="stat-icon blue">{% icon 'trophy' 22 %}</span><div><div class="stat-label">Rang de mon équipe</div><div class="stat-value">{% if stats.team_rank %}{{ stats.team_rank|ordinal }}{% else %}—{% endif %}</div><div class="stat-hint">{% if stats.team %}{{ stats.team_points|intcomma }} pts d’équipe{% else %}Aucune équipe{% endif %}</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'check-circle' 22 %}</span><div><div class="stat-label">Actions approuvées</div><div class="stat-value">{{ stats.approved_count }}</div><div class="stat-hint">{{ stats.pending_count }} en attente</div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'flag' 22 %}</span><div><div class="stat-label">Défis réussis</div><div class="stat-value">{{ stats.challenges_completed }}</div><div class="stat-hint">{{ stats.challenges_in_progress }} en cours</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'award' 22 %}</span><div><div class="stat-label">Badges</div><div class="stat-value">{{ stats.badges_count }}<small>/{{ stats.badges_total }}</small></div><div class="stat-hint">Record de série : {{ stats.streak.best }} j</div></div></div>
+</div>
+
+<div class="bento">
+  <div class="span-8 stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'sparkles' %} Défis recommandés</h2><p class="card-sub">Des défis actifs{% if user.favorite_category %}, d’abord dans votre thème préféré ({{ user.get_favorite_category_display }}){% endif %}</p></div><a class="card-link" href="{% url 'challenges:list' %}">Tous les défis {% icon 'arrow-right' 14 %}</a></div>
+      <div class="grid grid-2">
+        {% for challenge in stats.suggested_challenges %}
+          <article class="card challenge-tile">
+            <div class="row between"><span class="list-icon">{% icon challenge.category|category_icon 18 %}</span><span class="reward">+{{ challenge.reward_points }} pts</span></div>
+            <h3><a href="{{ challenge.get_absolute_url }}" style="color:var(--text)">{{ challenge.title|truncatechars:48 }}</a></h3>
+            <div class="meta">
+              <span class="pill tone-muted"><span class="difficulty {{ challenge.difficulty }}"><i></i><i></i><i></i></span> {{ challenge.get_difficulty_display }}</span>
+              <span class="pill tone-blue">{% icon 'clock' 12 %} {{ challenge.duration_days }} j</span>
+              <span class="pill tone-muted">{{ challenge.required_actions }} action{{ challenge.required_actions|pluralize }}</span>
+            </div>
+            <div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{{ challenge.time_progress }}"></div></div>
+            <div class="progress-meta"><span>Fin le {{ challenge.end_date|date:'d/m' }}</span><span>{{ challenge.days_left }} j restants</span></div>
+            <a class="btn btn-secondary btn-sm" href="{{ challenge.get_absolute_url }}">Rejoindre {% icon 'arrow-right' 14 %}</a>
+          </article>
+        {% empty %}
+          <div style="grid-column:1/-1">{% include 'partials/empty.html' with icon='flag' title='Aucun nouveau défi à proposer' text='Vous participez déjà à tous les défis actifs, ou aucun défi n’est publié pour le moment.' %}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'flag' %} Mes défis en cours</h2><a class="card-link" href="{% url 'challenges:mine' %}">Mes défis {% icon 'arrow-right' 14 %}</a></div>
+      {% for p in stats.participations %}
+        <div class="mb-2">
+          <div class="progress-meta mt-0 mb-1"><a href="{{ p.challenge.get_absolute_url }}" style="color:var(--text);font-weight:600">{{ p.challenge.title|truncatechars:48 }}</a><span>{{ p.progress.approved }}/{{ p.progress.required }} actions</span></div>
+          <div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{{ p.progress.percent }}"></div></div>
+          {% if p.progress.ready %}<span class="pill tone-lime mt-1">{% icon 'trophy' 12 %} Prêt à valider</span>{% endif %}
+        </div>
+      {% empty %}
+        <p class="muted small mb-0">Aucun défi en cours. Choisissez-en un ci-dessus pour démarrer.</p>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'leaf' %} Mon impact</h2><p class="card-sub">Points inscrits au registre ces 7 derniers jours</p></div>
+        <div class="text-right"><div class="big-number">{{ stats.this_week_actions }}</div><div class="small {% if stats.this_week_actions >= stats.last_week_actions %}text-lime{% else %}text-amber{% endif %}">action{{ stats.this_week_actions|pluralize }} cette semaine (vs {{ stats.last_week_actions }})</div></div></div>
+      {{ daily_chart|json_script:'daily-points' }}
+      <div class="chart" data-chart="bar" data-source="daily-points" data-unit="pts" aria-label="Points gagnés par jour" data-empty="Aucun point cette semaine : déclarez une action pour lancer votre série !"></div>
+      <hr>
+      <div class="row between">
+        <div><div class="stat-label">CO₂ évité (estimation)</div><div class="stat-value text-green">{{ stats.co2|floatformat:1 }} <small>kg</small></div></div>
+        <p class="estimate-note mb-0">{% icon 'info' 14 %} Calculé à partir des facteurs configurés pour chaque action validée.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="span-4 stack">
+    <div class="card holo">
+      <div class="card-head"><h3>{% icon 'users' %} Compétition d’équipe</h3></div>
+      {% if stats.team %}
+        <div class="row between mb-2"><div><div class="stat-label">{{ stats.team.name }}</div><div class="stat-value">{{ stats.team_points|intcomma }} <small>pts</small></div></div>
+          <span class="rank-badge {% if stats.team_rank and stats.team_rank <= 3 %}r{{ stats.team_rank }}{% endif %}" style="width:48px;height:48px;font-size:1.2rem">{{ stats.team_rank|default:'—' }}</span></div>
+        <div class="progress-meta mt-0 mb-1"><span>Ma contribution à l’équipe</span><span>{{ stats.team_contribution }} %</span></div>
+        <div class="progress"><div class="progress-bar" style="width:0" data-width="{{ stats.team_contribution }}"></div></div>
+        <h4 class="mt-3 mb-1 small muted">Réussites récentes de l’équipe</h4>
+        <ul class="timeline">
+          {% for activity in stats.team_achievements %}
+            <li class="timeline-item"><span class="timeline-dot">{% icon activity.icon 16 %}</span><div class="timeline-body small">{{ activity.description }}<time>{{ activity.created_at|naturaltime }}</time></div></li>
+          {% empty %}<li class="muted small">Pas encore de réussite d’équipe.</li>{% endfor %}
+        </ul>
+        <a class="btn btn-secondary btn-block mt-2" href="{% url 'analytics:leaderboard' %}">{% icon 'trophy' 16 %} Voir le classement</a>
+      {% else %}
+        {% include 'partials/empty.html' with icon='users' title='Rejoignez une équipe' text='La compétition se joue en équipe : explorez les équipes ouvertes.' %}
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'target' %} Mes objectifs</h3><a class="card-link" href="{% url 'goals:list' %}">Tous {% icon 'arrow-right' 14 %}</a></div>
+      {% for goal in stats.goals %}
+        <div class="mb-2">
+          <div class="progress-meta mt-0 mb-1"><a href="{{ goal.get_absolute_url }}" style="color:var(--text);font-weight:600">{{ goal.title|truncatechars:30 }}</a><span>{{ goal.current_progress }}/{{ goal.target_value }}</span></div>
+          <div class="progress"><div class="progress-bar {% if goal.is_overdue %}amber{% else %}green{% endif %}" style="width:0" data-width="{{ goal.progress_percent }}"></div></div>
+        </div>
+      {% empty %}
+        {% url 'goals:create' as goal_url %}
+        {% include 'partials/empty.html' with icon='target' title='Aucun objectif actif' text='Fixez-vous un cap pour rester motivé·e.' cta_url=goal_url cta_label='Créer un objectif' %}
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'award' %} Badges récents</h3><a class="card-link" href="{% url 'gamification:achievements' %}">Collection {% icon 'arrow-right' 14 %}</a></div>
+      <div class="avatar-stack">{% for award in stats.recent_badges %}<span class="medal medal-mini holo-badge {{ award.badge.tone }}" title="{{ award.badge.name }}" style="margin-right:8px"><span>{% icon award.badge.icon 16 %}</span></span>{% empty %}<span class="muted small">Vos badges apparaîtront ici.</span>{% endfor %}</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'history' %} Dernières actions</h3><a class="card-link" href="{% url 'actions:list' %}">Toutes {% icon 'arrow-right' 14 %}</a></div>
+    <ul class="list">
+      {% for action in stats.recent_actions %}
+        <li class="list-item"><span class="list-icon">{% icon action.action_type.category|category_icon 16 %}</span>
+          <span class="grow"><a class="title" href="{% url 'actions:detail' action.pk %}">{{ action.action_type.name|truncatechars:30 }}</a><span class="sub">{{ action.performed_on|date:'d/m/Y' }}</span></span>
+          <span class="pill tone-{{ action.status|status_tone }}">{{ action.get_status_display }}</span></li>
+      {% empty %}<li class="muted small">Aucune action déclarée pour l’instant.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'calendar' %} Mes prochains événements</h3><a class="card-link" href="{% url 'community:list' %}">Agenda {% icon 'arrow-right' 14 %}</a></div>
+    <ul class="list">
+      {% for event in stats.upcoming_events %}
+        <li class="list-item"><span class="date-tile" style="width:46px"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d" style="font-size:1.1rem">{{ event.start_at|date:'d' }}</span></span>
+          <span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title|truncatechars:32 }}</a><span class="sub">{{ event.start_at|date:'H:i' }}</span></span></li>
+      {% empty %}<li class="muted small">Aucune inscription à venir.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'bell' %} Notifications récentes</h3><a class="card-link" href="{% url 'notifications:list' %}">Toutes {% icon 'arrow-right' 14 %}</a></div>
+    {% for notification in latest_notifications|slice:':4' %}
+      <a class="notif-item {% if not notification.is_read %}unread{% endif %}" href="{% url 'notifications:detail' notification.pk %}">
+        <span class="notif-icon">{% icon notification.icon 16 %}</span>
+        <span class="grow"><span class="notif-title">{{ notification.title }}</span><time>{{ notification.created_at|naturaltime }}</time></span>
+      </a>
+    {% empty %}<p class="muted small">Aucune notification.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

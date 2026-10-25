@@ -1,0 +1,57 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}{% if organization %}{{ organization.name }}{% else %}Mon organisation{% endif %}{% endblock %}
+{% block content %}
+{% if not organization %}
+  <div class="card card-glass">
+    {% url 'organizations:create' as create_url %}
+    {% if user.organization_type == 'association' %}
+      {% include 'partials/empty.html' with icon='building' title='Aucune organisation rattachée' text='Créez le profil de votre association pour organiser des campagnes et des événements.' cta_url=create_url cta_label='Créer mon organisation' %}
+    {% else %}
+      {% include 'partials/empty.html' with icon='building' title='Aucune organisation rattachée' text='Votre compte n’est rattaché à aucune entreprise. Un administrateur peut vous y rattacher depuis la gestion des comptes.' %}
+    {% endif %}
+  </div>
+{% else %}
+<section class="holo banner banner-association">
+  <div class="org-logo">{% if organization.logo %}<img src="{{ organization.logo.url }}" alt="Logo de {{ organization.name }}">{% else %}{% icon 'building' 40 %}{% endif %}</div>
+  <div>
+    <span class="eyebrow">{% icon 'building' 14 %} {{ organization.get_kind_display }}</span>
+    <h1>{{ organization.name }}</h1>
+    <div class="banner-meta">
+      {% if organization.focus_area %}<span>{% icon organization.focus_area|category_icon 15 %} {{ organization.get_focus_area_display }}</span>{% endif %}
+      {% if organization.city %}<span>{% icon 'map-pin' 15 %} {{ organization.city }}</span>{% endif %}
+      {% if organization.website %}<span>{% icon 'link' 15 %} <a href="{{ organization.website }}" target="_blank" rel="noopener noreferrer">Site web</a></span>{% endif %}
+      {% if organization.contact_email %}<span>{% icon 'mail' 15 %} {{ organization.contact_email }}</span>{% endif %}
+    </div>
+    <p>{{ organization.mission|default:'Aucune mission renseignée.' }}</p>
+    {% if can_manage %}<a class="btn btn-secondary" href="{% url 'organizations:settings' %}">{% icon 'edit' 16 %} Modifier le profil</a>{% endif %}
+  </div>
+  <div class="banner-art"><div class="text-center"><div class="stat-label">Comptes rattachés</div><div class="stat-value" style="font-size:2.6rem">{{ summary.member_total }}</div></div></div>
+</section>
+
+<div class="kpi-grid">
+  <div class="card kpi-tile k-cyan"><div class="kpi-label">{% icon 'zap' 16 %} Points cumulés</div><div class="kpi-value">{{ summary.points|intcomma }}</div><div class="kpi-hint">total agrégé de l’organisation</div></div>
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'check-circle' 16 %} Actions validées</div><div class="kpi-value">{{ summary.approved_actions }}</div><div class="kpi-hint">toutes catégories</div></div>
+  <div class="card kpi-tile k-blue"><div class="kpi-label">{% icon 'activity' 16 %} Participation</div><div class="kpi-value">{{ summary.participation_rate }} %</div><div class="kpi-hint">{{ summary.active_members }} actif{{ summary.active_members|pluralize }} sur 30 jours</div></div>
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'flag' 16 %} Défis réussis</div><div class="kpi-value">{{ summary.challenges_completed }}</div><div class="kpi-hint">{{ summary.challenges_joined }} participation{{ summary.challenges_joined|pluralize }}</div></div>
+  <div class="card kpi-tile k-amber"><div class="kpi-label">{% icon 'users' 16 %} Équipes</div><div class="kpi-value">{{ summary.teams_total }}</div><div class="kpi-hint">équipes de travail rattachées</div></div>
+</div>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><div><h2>{% icon 'trending-up' %} Points par semaine</h2><p class="card-sub">Agrégat de l’organisation — aucun détail individuel</p></div></div>
+    {{ weekly_points|json_script:'org-points' }}
+    <div class="chart" data-chart="bar" data-source="org-points" data-unit="pts" aria-label="Points par semaine" data-empty="Aucun point enregistré."></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'calendar' %} Prochains événements</h3></div>
+    <ul class="list">
+      {% for event in upcoming %}
+        <li class="list-item"><span class="date-tile" style="width:46px"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d" style="font-size:1.1rem">{{ event.start_at|date:'d' }}</span></span>
+          <span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title|truncatechars:34 }}</a><span class="sub">{{ event.get_kind_display }}</span></span></li>
+      {% empty %}<li class="muted small">Aucun événement à venir.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,20 +1,35 @@
 {% load eco_tags %}
 <header class="topbar">
   <button class="icon-btn menu-toggle" type="button" data-sidebar-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Ouvrir le menu">{% icon 'menu' %}</button>
+  {% if nav.kind == 'admin' %}
+  <form class="topbar-search" action="{% url 'accounts:user_list' %}" method="get" role="search">
+    {% icon 'search' 18 %}
+    <label class="sr-only" for="topbar-search">Rechercher un compte</label>
+    <input class="input" id="topbar-search" type="search" name="q" placeholder="Rechercher un compte (nom, e-mail)…" value="{{ request.GET.q|default:'' }}">
+  </form>
+  {% else %}
   <form class="topbar-search" action="{% url 'challenges:list' %}" method="get" role="search">
     {% icon 'search' 18 %}
     <label class="sr-only" for="topbar-search">Rechercher un défi</label>
     <input class="input" id="topbar-search" type="search" name="q" placeholder="Rechercher un défi écologique…" value="{{ request.GET.q|default:'' }}">
   </form>
+  {% endif %}
   <div class="topbar-actions">
-    <a class="btn btn-primary btn-sm hide-mobile" href="{% url 'actions:create' %}">{% icon 'plus' 16 %} Déclarer une action</a>
+    {% if nav.kind == 'admin' %}
+      <a class="btn btn-secondary btn-sm hide-mobile" href="{% url 'actions_admin:moderation_list' %}">{% icon 'clipboard-check' 16 %} File de modération{% if nav.pending_actions %} ({{ nav.pending_actions }}){% endif %}</a>
+    {% elif nav.kind == 'association' %}
+      {% if nav.can_create_events %}<a class="btn btn-primary btn-sm hide-mobile" href="{% url 'community:create' %}?kind=campaign">{% icon 'megaphone' 16 %} Nouvelle campagne</a>{% endif %}
+    {% else %}
+      <a class="btn btn-primary btn-sm hide-mobile" href="{% url 'actions:create' %}">{% icon 'plus' 16 %} Déclarer une action</a>
+    {% endif %}
     {% include 'partials/notification_dropdown.html' %}
     <div class="dropdown user-menu" data-dropdown>
       <button class="icon-btn" type="button" data-dropdown-trigger aria-haspopup="true" aria-expanded="false" aria-label="Menu du compte">{% icon 'user' %}</button>
       <div class="dropdown-menu" role="menu">
         <div class="dropdown-head"><strong>{{ user|display_name }}</strong></div>
         <a class="dropdown-item" href="{% url 'accounts:profile' %}" role="menuitem">{% icon 'user' 18 %} Mon profil</a>
-        <a class="dropdown-item" href="{% url 'teams:mine' %}" role="menuitem">{% icon 'users' 18 %} Mon équipe</a>
+        {% if nav.has_team %}<a class="dropdown-item" href="{% url 'teams:mine' %}" role="menuitem">{% icon 'users' 18 %} Mon équipe</a>{% endif %}
+        {% if nav.has_org %}<a class="dropdown-item" href="{% url 'organizations:detail' %}" role="menuitem">{% icon 'building' 18 %} Mon organisation</a>{% endif %}
         <a class="dropdown-item" href="{% url 'notifications:preferences' %}" role="menuitem">{% icon 'sliders' 18 %} Préférences</a>
         <a class="dropdown-item" href="{% url 'accounts:password_change' %}" role="menuitem">{% icon 'key' 18 %} Mot de passe</a>
         <form method="post" action="{% url 'accounts:logout' %}" class="inline-form" data-no-lock>

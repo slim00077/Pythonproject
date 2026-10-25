@@ -23,6 +23,7 @@ from analytics.models import ActivityLog
 from challenges.models import Challenge, ChallengeParticipation
 from challenges.services import approve_challenge, complete_challenge, join_challenge, participation_progress
 from community.models import Event, EventParticipation
+from organizations.models import Organization
 from community.services import join_event, publish_event
 from core.choices import Audience, EcoCategory
 from core.exceptions import BusinessRuleError
@@ -97,6 +98,16 @@ USERS = [
     ('demo_ines', 'Inès', 'Chaabane', 'employee', 'Entreprise (démo)', 'Bizerte', EcoCategory.WATER),
     ('demo_omar', 'Omar', 'Ferchichi', 'association', 'Association (démo)', 'Nabeul', EcoCategory.WATER),
     ('demo_moderateur', 'Salma', 'Ayari', 'other', 'Équipe EcoTeams (démo)', 'Tunis', ''),
+]
+
+ORGANIZATIONS = [
+    # name, kind, mission, focus, city, member usernames, manager usernames
+    ('Entreprise (démo)', Organization.Kind.COMPANY,
+     'Organisation fictive : réduire les déchets et la consommation d’énergie des bureaux.',
+     EcoCategory.RECYCLING, 'Sousse', ['demo_lina', 'demo_karim', 'demo_ines'], ['demo_lina']),
+    ('Association (démo)', Organization.Kind.ASSOCIATION,
+     'Association fictive : mobiliser les habitants autour de nettoyages, d’ateliers et d’économies d’énergie.',
+     EcoCategory.ENERGY, 'Sfax', ['demo_sarra', 'demo_omar'], ['demo_sarra']),
 ]
 
 TEAMS = [
@@ -180,6 +191,7 @@ class Command(BaseCommand):
             self.complete_ready_challenges()
             self.seed_goals()
             self.seed_events()
+            self.seed_organizations()
             self.tidy_notifications()
         self.stdout.write(self.style.SUCCESS('Données de démonstration prêtes.'))
         self.stdout.write(f'  Comptes : {", ".join(self.users)}')
@@ -201,6 +213,7 @@ class Command(BaseCommand):
         Team.objects.filter(captain__in=demo_users).delete()
         Challenge.objects.filter(creator__in=demo_users).delete()
         Event.objects.filter(organizer__in=demo_users).delete()
+        Organization.objects.filter(name__in=[name for name, *_ in ORGANIZATIONS]).delete()
         deleted, _ = demo_users.delete()
         Group.objects.filter(name='Modérateur', role__is_system=False).delete()
         self.stdout.write(self.style.WARNING(f'Données de démonstration supprimées ({deleted} objets).'))
@@ -243,6 +256,22 @@ class Command(BaseCommand):
                 created_any = True
             users[username] = user
         return users, created_any
+
+    def seed_organizations(self):
+        """Attach the demo employees and associations to demo organizations (workplace teams, events, challenges)."""
+        for name, kind, mission, focus, city, members, managers in ORGANIZATIONS:
+            organization, _ = Organization.objects.get_or_create(name=name, defaults={
+                'kind': kind, 'mission': mission, 'focus_area': focus, 'city': city,
+                'contact_email': 'contact@demo.ecoteams.local',
+            })
+            for username in members:
+                User.objects.filter(username=username).update(
+                    affiliation=organization, is_org_manager=username in managers)
+            member_users = [self.users[username] for username in members]
+            Event.objects.filter(organizer__in=member_users).update(organization=organization)
+            Challenge.objects.filter(creator__in=member_users).update(organization=organization)
+            if kind == Organization.Kind.COMPANY:
+                Team.objects.filter(captain__in=member_users).update(organization=organization)
 
     def seed_moderator_role(self):
         group, _ = Group.objects.get_or_create(name='Modérateur')

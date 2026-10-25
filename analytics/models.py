@@ -36,6 +36,9 @@ class ActivityLog(models.Model):
         EVENT_JOINED = 'event_joined', 'Inscription à un événement'
         EVENT_LEFT = 'event_left', 'Désinscription d’un événement'
         ROLE_CHANGED = 'role_changed', 'Rôles modifiés'
+        ACCOUNT_UPDATED = 'account_updated', 'Compte modifié'
+        ORGANIZATION_UPDATED = 'organization_updated', 'Organisation modifiée'
+        ANNOUNCEMENT_SENT = 'announcement_sent', 'Annonce envoyée'
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activities', verbose_name='auteur'
@@ -68,5 +71,5 @@ class ActivityLog(models.Model):
         return {
             'team': 'users', 'member': 'user-minus', 'captain': 'crown', 'challenge': 'flag',
             'action': 'leaf', 'goal': 'target', 'badge': 'award', 'points': 'zap', 'event': 'calendar',
-            'role': 'shield',
+            'role': 'shield', 'account': 'user', 'organization': 'building', 'announcement': 'megaphone',
         }.get(prefix, 'activity')

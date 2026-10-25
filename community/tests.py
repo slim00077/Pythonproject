@@ -15,7 +15,7 @@ from .models import Event, EventParticipation
 
 class EventWorkflowTests(TestCase):
     def setUp(self):
-        self.organizer = make_user('organizer')
+        self.organizer = make_user('organizer', organization_type='association')
         self.user = make_user('guest')
         self.admin = make_superuser()
 
@@ -60,7 +60,7 @@ class EventWorkflowTests(TestCase):
         event = make_event(self.organizer, status=Event.Status.DRAFT)
         self.client.force_login(self.user)
         self.assertEqual(self.client.post(reverse('community:update', args=[event.slug]), self.event_data()).status_code, 403)
-        self.assertEqual(self.client.post(reverse('community:submit', args=[event.slug])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('community:submit', args=[event.slug])).status_code, 403)
         self.client.force_login(self.organizer)
         self.client.post(reverse('community:update', args=[event.slug]), self.event_data(title='Titre modifié'))
         self.client.post(reverse('community:submit', args=[event.slug]))

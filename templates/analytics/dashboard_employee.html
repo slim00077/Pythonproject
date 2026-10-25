@@ -1,0 +1,137 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Éco-hub entreprise{% endblock %}
+{% block content %}
+<section class="holo banner banner-employee">
+  <div>
+    <span class="eyebrow">{% icon 'briefcase' 14 %} Éco-hub entreprise</span>
+    <h1>{% if d.organization %}{{ d.organization.name }}{% else %}Bonjour, {{ user.first_name|default:user.username }}{% endif %}</h1>
+    <div class="banner-meta">
+      <span>{% icon 'user' 15 %} {{ user|display_name }}</span>
+      <span>{% icon 'users' 15 %} {% if d.team %}Équipe de travail : <a href="{{ d.team.get_absolute_url }}">{{ d.team.name }}</a>{% else %}Pas encore d’équipe de travail{% endif %}</span>
+    </div>
+    {% if d.organization %}
+      <p>{% if d.campaigns %}Campagne en cours : <strong>{{ d.campaigns.0.title }}</strong> — {{ d.campaigns.0.start_at|date:'d/m' }} au {{ d.campaigns.0.end_at|date:'d/m' }}.{% else %}Aucune campagne interne n’est publiée pour le moment. Vous pouvez néanmoins déclarer vos actions et relever les défis ouverts.{% endif %}</p>
+    {% else %}
+      <p>Votre compte n’est rattaché à aucune entreprise. Demandez à un administrateur de vous rattacher à votre organisation pour accéder aux classements et campagnes internes.</p>
+    {% endif %}
+    <div class="row">
+      <a class="btn btn-primary" href="{% url 'actions:create' %}">{% icon 'plus' 18 %} Déclarer une action</a>
+      <a class="btn btn-secondary" href="{% url 'challenges:list' %}{% if d.organization %}?scope=org{% endif %}">{% icon 'flag' 18 %} Défis d’entreprise</a>
+    </div>
+  </div>
+  <div class="card" style="background:rgba(11,16,32,.5)">
+    <div class="stat-label mb-1">Participation de l’entreprise (30 jours)</div>
+    {% if d.summary %}
+      <div class="row" style="gap:18px">
+        {% progress_ring d.summary.participation_rate 104 9 'actifs' 'cyan' %}
+        <dl class="kv grow" style="grid-template-columns:1fr auto">
+          <dt>Collaborateurs actifs</dt><dd>{{ d.summary.active_members }} / {{ d.summary.member_total }}</dd>
+          <dt>Actions validées</dt><dd>{{ d.summary.approved_actions }}</dd>
+          <dt>Points cumulés</dt><dd>{{ d.summary.points|intcomma }}</dd>
+        </dl>
+      </div>
+      <p class="estimate-note mt-1 mb-0">{% icon 'info' 14 %} Taux calculé sur les comptes rattachés ayant au moins un point enregistré.</p>
+    {% else %}
+      <p class="muted small mb-0">Aucune donnée d’organisation disponible.</p>
+    {% endif %}
+  </div>
+</section>
+
+<div class="stat-row stat-compact">
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'zap' 22 %}</span><div><div class="stat-label">Ma contribution</div><div class="stat-value">{{ d.points|intcomma }} <small>pts</small></div><div class="stat-hint">{{ d.approved_count }} action{{ d.approved_count|pluralize }} validée{{ d.approved_count|pluralize }}</div></div></div>
+  <div class="card stat"><span class="stat-icon blue">{% icon 'users' 22 %}</span><div><div class="stat-label">Mon équipe</div><div class="stat-value">{% if d.my_team_org_rank %}{{ d.my_team_org_rank|ordinal }}{% else %}—{% endif %}</div><div class="stat-hint">{% if d.team %}{{ d.team_points|intcomma }} pts · classement interne{% else %}Rejoignez une équipe de travail{% endif %}</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'flag' 22 %}</span><div><div class="stat-label">Défis réussis</div><div class="stat-value">{{ d.challenges_completed }}</div><div class="stat-hint">{% if d.summary %}{{ d.summary.challenges_completed }} dans l’entreprise{% else %}—{% endif %}</div></div></div>
+  <div class="card stat"><span class="stat-icon amber">{% icon 'clock' 22 %}</span><div><div class="stat-label">En attente de validation</div><div class="stat-value">{{ d.pending_count }}</div><div class="stat-hint">déclarations à modérer</div></div></div>
+</div>
+
+<div class="bento">
+  <div class="span-7 stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'trophy' %} Classement des équipes de l’entreprise</h2><p class="card-sub">Calculé à partir du registre des points</p></div><a class="card-link" href="{% url 'analytics:leaderboard' %}{% if d.organization %}?scope=org{% endif %}">Détail {% icon 'arrow-right' 14 %}</a></div>
+      {% if d.org_teams %}
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>#</th><th>Équipe de travail</th><th class="num">Membres</th><th class="num">Actions</th><th class="num">Points</th></tr></thead>
+          <tbody>
+            {% for team in d.org_teams %}
+              <tr class="{% if d.team and team.pk == d.team.pk %}is-mine{% endif %}">
+                <td><span class="rank-badge {% if team.points > 0 and team.rank <= 3 %}r{{ team.rank }}{% endif %}">{{ team.rank }}</span></td>
+                <td><a href="{{ team.get_absolute_url }}"><strong>{{ team.name }}</strong></a></td>
+                <td class="num">{{ team.member_total }}</td><td class="num">{{ team.approved_actions }}</td><td class="num"><strong class="text-cyan">{{ team.points|intcomma }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      {% else %}
+        {% url 'teams:list' as teams_url %}
+        {% include 'partials/empty.html' with icon='users' title='Aucune équipe de travail' text='Les équipes créées par les collaborateurs de votre entreprise apparaîtront ici.' cta_url=teams_url cta_label='Voir les équipes' cta_icon='users' %}
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'flag' %} Défis d’entreprise</h2><p class="card-sub">Défis proposés par votre organisation</p></div><a class="card-link" href="{% url 'challenges:list' %}?scope=org">Tous {% icon 'arrow-right' 14 %}</a></div>
+      <ul class="list">
+        {% for challenge in d.org_challenges %}
+          <li class="list-item"><span class="list-icon">{% icon challenge.category|category_icon 18 %}</span>
+            <span class="grow"><a class="title" href="{{ challenge.get_absolute_url }}">{{ challenge.title|truncatechars:50 }}</a><span class="sub">{{ challenge.get_difficulty_display }} · fin le {{ challenge.end_date|date:'d/m' }} · +{{ challenge.reward_points }} pts</span></span>
+            {% if challenge.my_status == 'in_progress' %}<a class="btn btn-secondary btn-sm" href="{{ challenge.get_absolute_url }}">Continuer</a>
+            {% elif challenge.my_status == 'completed' %}<span class="pill tone-success">{% icon 'check' 12 %} Réussi</span>
+            {% else %}<a class="btn btn-primary btn-sm" href="{{ challenge.get_absolute_url }}">Participer</a>{% endif %}</li>
+        {% empty %}
+          <li class="muted small">Aucun défi d’entreprise actif. Les défis généraux restent accessibles dans <a href="{% url 'challenges:list' %}">la liste complète</a>.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'trending-up' %} Points de l’entreprise par semaine</h2><p class="card-sub">Total agrégé des collaborateurs rattachés</p></div></div>
+      {{ weekly_chart|json_script:'org-weekly-points' }}
+      <div class="chart" data-chart="bar" data-source="org-weekly-points" data-unit="pts" aria-label="Points de l’entreprise par semaine" data-empty="Aucun point enregistré pour l’entreprise sur cette période."></div>
+    </div>
+  </div>
+
+  <div class="span-5 stack">
+    <div class="card holo">
+      <div class="card-head"><h3>{% icon 'megaphone' %} Campagnes internes</h3><a class="card-link" href="{% url 'community:list' %}{% if d.organization %}?scope=org{% endif %}">Agenda {% icon 'arrow-right' 14 %}</a></div>
+      <ul class="list">
+        {% for event in d.campaigns %}
+          <li class="list-item"><span class="date-tile" style="width:46px"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d" style="font-size:1.1rem">{{ event.start_at|date:'d' }}</span></span>
+            <span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title|truncatechars:34 }}</a><span class="sub">{{ event.start_at|date:'d/m' }} → {{ event.end_at|date:'d/m' }}</span></span>
+            {% if event.registration_deadline %}<span class="pill tone-warning">{% icon 'clock' 12 %} {{ event.registration_deadline|date:'d/m' }}</span>{% endif %}</li>
+        {% empty %}<li class="muted small">Aucune campagne publiée par votre organisation.</li>{% endfor %}
+        {% for event in d.events %}
+          <li class="list-item"><span class="list-icon">{% icon 'calendar' 16 %}</span>
+            <span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title|truncatechars:34 }}</a><span class="sub">{{ event.start_at|date:'d/m H:i' }}</span></span></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'layers' %} Contributions par catégorie</h3></div>
+      {{ category_chart|json_script:'org-categories' }}
+      <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="org-categories" aria-label="Actions validées par catégorie" data-empty="Aucune action validée dans l’entreprise."></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'award' %} Réussites récentes des équipes</h3></div>
+      <ul class="list">
+        {% for item in d.achievements %}
+          <li class="list-item"><span class="list-icon">{% icon 'trophy' 16 %}</span>
+            <span class="grow"><span class="title">{{ item.team__name }}</span><span class="sub">{{ item.challenge__title|truncatechars:40 }}</span></span>
+            <span class="pill tone-success">{{ item.total }} réussite{{ item.total|pluralize }}</span></li>
+        {% empty %}<li class="muted small">Aucun défi terminé par une équipe de l’entreprise pour l’instant.</li>{% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'flag' %} Mes défis en cours</h3></div>
+      {% for p in d.participations %}
+        <div class="mb-2">
+          <div class="progress-meta mt-0 mb-1"><a href="{{ p.challenge.get_absolute_url }}" style="color:var(--text);font-weight:600">{{ p.challenge.title|truncatechars:34 }}</a><span>{{ p.progress.approved }}/{{ p.progress.required }}</span></div>
+          <div class="progress"><div class="progress-bar blue" style="width:0" data-width="{{ p.progress.percent }}"></div></div>
+        </div>
+      {% empty %}<p class="muted small mb-0">Vous ne participez à aucun défi pour le moment.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if organization %}Modifier l’organisation{% else %}Nouvelle organisation{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'organizations:admin_list' %}">Organisations</a> {% icon 'chevron-right' 14 %} {% if organization %}{{ organization.name }}{% else %}Nouvelle{% endif %}</nav>
+    <h1>{% if organization %}Modifier « {{ organization.name }} »{% else %}Nouvelle organisation{% endif %}</h1>
+  </div>
+</div>
+<div class="split">
+  <div class="card card-glass form-card" style="max-width:none">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include 'partials/form_fields.html' %}
+      <div class="form-actions">
+        <a class="btn btn-ghost" href="{% url 'organizations:admin_list' %}">Annuler</a>
+        <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+      </div>
+    </form>
+  </div>
+  {% if organization %}
+  <aside class="card">
+    <div class="card-head"><h3>{% icon 'users' %} Comptes rattachés</h3><span class="small muted">{{ members|length }}</span></div>
+    <ul class="list">
+      {% for member in members %}
+        <li class="list-item">{% include 'partials/avatar.html' with u=member size='sm' %}<span class="grow"><a class="title" href="{% url 'accounts:user_edit' member.pk %}">{{ member|display_name }}</a><span class="sub">{{ member.get_organization_type_display }}{% if member.is_org_manager %} · gestionnaire{% endif %}</span></span></li>
+      {% empty %}<li class="muted small">Aucun compte rattaché.</li>{% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

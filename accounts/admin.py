@@ -7,11 +7,11 @@ from .models import Role, User
 @admin.register(User)
 class EcoUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'organization_type', 'is_staff', 'is_active')
-    list_filter = ('organization_type', 'is_staff', 'is_superuser', 'is_active', 'groups')
+    list_filter = ('organization_type', 'affiliation', 'is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     fieldsets = UserAdmin.fieldsets + (
         ('Profil EcoTeams', {
-            'fields': ('organization_type', 'organization', 'city', 'favorite_category', 'skills', 'bio', 'avatar'),
+            'fields': ('organization_type', 'affiliation', 'is_org_manager', 'organization', 'city', 'favorite_category', 'skills', 'bio', 'avatar'),
         }),
     )
 

@@ -32,6 +32,10 @@ def event_list(request):
     events = Event.objects.filter(status__in=[Event.Status.PUBLISHED, Event.Status.COMPLETED]).annotate(
         participant_total=Count('participations')
     )
+    scope = request.GET.get('scope', '')
+    if scope == 'org':
+        # « Campagnes et événements » of an employee: only those of the user's own organization.
+        events = events.filter(organization_id=request.user.affiliation_id) if request.user.affiliation_id else events.none()
     when = 'upcoming'
     if form.is_valid():
         data = form.cleaned_data
@@ -56,6 +60,7 @@ def event_list(request):
     ).annotate(participant_total=Count('participations'))[:3]
     return render(request, 'community/event_list.html', {
         'form': form, 'page': page, 'joined': joined, 'campaigns': campaigns,
+        'can_create': services.can_create(request.user), 'scope': scope,
     })
 
 
@@ -63,9 +68,14 @@ def event_list(request):
 def my_events(request):
     participations = EventParticipation.objects.filter(user=request.user).select_related('event').order_by(
         '-event__start_at')
-    organized = Event.objects.filter(organizer=request.user).annotate(
+    organized = Event.objects.filter(
+        Q(organizer=request.user) | Q(organization_id=request.user.affiliation_id, organization__isnull=False)
+        if request.user.can_manage_organization else Q(organizer=request.user)
+    ).annotate(
         participant_total=Count('participations')).order_by('-created_at')
-    return render(request, 'community/my_events.html', {'participations': participations, 'organized': organized})
+    return render(request, 'community/my_events.html', {
+        'participations': participations, 'organized': organized, 'can_create': services.can_create(request.user),
+    })
 
 
 @login_required
@@ -82,7 +92,7 @@ def event_detail(request, slug):
         'participant_total': participations.count(),
         'team_rows': team_rows,
         'is_participant': participations.filter(user=request.user).exists(),
-        'is_organizer': event.organizer_id == request.user.pk,
+        'is_organizer': services.is_event_manager(request.user, event),
         'can_edit': services.can_edit(request.user, event),
         'can_delete': services.can_delete(request.user, event),
         'can_cancel': services.can_cancel(request.user, event),
@@ -92,8 +102,13 @@ def event_detail(request, slug):
 
 @login_required
 def event_create(request):
+    if not services.can_create(request.user):
+        raise PermissionDenied
     start = (timezone.localtime() + timedelta(days=7)).replace(hour=10, minute=0, second=0, microsecond=0)
-    form = EventForm(request.POST or None, initial={'start_at': start, 'end_at': start + timedelta(hours=2)})
+    kind = request.GET.get('kind') if request.GET.get('kind') in Event.Kind.values else Event.Kind.EVENT
+    form = EventForm(request.POST or None, initial={
+        'start_at': start, 'end_at': start + timedelta(hours=2), 'kind': kind,
+    })
     if request.method == 'POST' and form.is_valid():
         event = services.create_event(request.user, form)
         messages.success(request, 'Brouillon enregistré. Soumettez-le à validation pour le publier.')
@@ -143,7 +158,9 @@ def _run(request, action, success_message, event, *args):
 @login_required
 @require_POST
 def event_submit(request, slug):
-    event = get_object_or_404(Event, slug=slug, organizer=request.user)
+    event = get_object_or_404(Event, slug=slug)
+    if not services.is_event_manager(request.user, event):
+        raise PermissionDenied
     return _run(request, services.submit_for_review, 'Événement soumis à validation.', event)
 
 

@@ -12,18 +12,19 @@ class EventForm(StyledFormMixin, forms.ModelForm):
         model = Event
         fields = (
             'title', 'kind', 'category', 'description', 'format', 'location', 'online_url', 'start_at', 'end_at',
-            'target_audience', 'capacity', 'participation_goal',
+            'target_audience', 'capacity', 'participation_goal', 'registration_deadline',
         )
         widgets = {
             'start_at': DateTimeInput(),
             'end_at': DateTimeInput(),
+            'registration_deadline': DateTimeInput(),
             'description': forms.Textarea(attrs={'rows': 5}),
             'online_url': forms.URLInput(attrs={'placeholder': 'https://…'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name in ('start_at', 'end_at'):
+        for name in ('start_at', 'end_at', 'registration_deadline'):
             self.fields[name].input_formats = ['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M']
 
     def clean(self):

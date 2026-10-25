@@ -1,0 +1,35 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Participants{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'users' 14 %} {{ organization.name }}</span>
+    <h1>Participants</h1>
+    <p class="page-sub">Inscriptions à vos propres événements et campagnes uniquement. {{ unique_participants }} personne{{ unique_participants|pluralize }} distincte{{ unique_participants|pluralize }}.</p>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  {% include 'partials/field.html' with field=form.q %}
+  {% include 'partials/field.html' with field=form.event %}
+  <button class="btn btn-secondary" type="submit">{% icon 'search' 16 %} Filtrer</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Participant</th><th>Événement</th><th>Équipe</th><th>Inscrit</th></tr></thead>
+    <tbody>
+      {% for registration in page %}
+        <tr>
+          <td><div class="who">{% include 'partials/avatar.html' with u=registration.user size='sm' %}<span><strong>{{ registration.user|display_name }}</strong><span>@{{ registration.user.username }}</span></span></div></td>
+          <td><a href="{{ registration.event.get_absolute_url }}">{{ registration.event.title|truncatechars:40 }}</a></td>
+          <td>{% if registration.team %}{{ registration.team.name }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="nowrap small">{{ registration.joined_at|naturaltime }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% include 'partials/empty.html' with icon='users' title='Aucun participant' text='Les inscriptions à vos événements apparaîtront ici.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

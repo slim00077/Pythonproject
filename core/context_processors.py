@@ -11,6 +11,25 @@ from .permissions import (
 )
 
 
+def account_kind(user):
+    """Which interface a signed-in user gets: admin, employee, association or student."""
+    if is_admin(user):
+        return 'admin'
+    if user.organization_type in ('employee', 'association'):
+        return user.organization_type
+    return 'student'
+
+
+def _has_team(user):
+    from teams.models import Membership
+    return Membership.objects.filter(user=user).exists()
+
+
+def can_create_events(user):
+    from community.services import can_create
+    return can_create(user)
+
+
 def navigation(request):
     """Expose the back-office capabilities of the current user to templates.
 
@@ -21,6 +40,11 @@ def navigation(request):
     if not user or not user.is_authenticated:
         return {'nav': {'backoffice': False}}
     nav = {
+        'kind': account_kind(user),
+        'has_org': bool(user.affiliation_id),
+        'has_team': _has_team(user),
+        'is_org_manager': user.can_manage_organization,
+        'can_create_events': can_create_events(user),
         'backoffice': has_backoffice_access(user),
         'is_admin': is_admin(user),
         'moderate_actions': user.has_perm(MODERATE_ACTIONS),

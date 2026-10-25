@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.views.static import serve
 
 from analytics.services import landing_stats, team_leaderboard
+from challenges.models import Challenge
 from community.models import Event
 
 PRIVATE_MEDIA_PREFIXES = ('evidence/',)
@@ -15,9 +16,17 @@ def home(request):
     upcoming = (
         Event.objects.filter(status=Event.Status.PUBLISHED, end_at__gte=timezone.now()).order_by('start_at')[:3]
     )
+    challenges = Challenge.objects.filter(
+        status=Challenge.Status.ACTIVE, end_date__gte=timezone.localdate()
+    ).order_by('end_date')[:3]
+    campaigns = Event.objects.filter(
+        kind=Event.Kind.CAMPAIGN, status=Event.Status.PUBLISHED, end_at__gte=timezone.now()
+    ).order_by('start_at')[:3]
     return render(request, 'core/home.html', {
+        'showcase_challenges': challenges,
+        'showcase_campaigns': campaigns,
         'stats': landing_stats(),
-        'top_teams': [team for team in team_leaderboard() if team.points > 0][:3],
+        'top_teams': [team for team in team_leaderboard(public_only=True) if team.points > 0][:3],
         'upcoming_events': upcoming,
     })
 

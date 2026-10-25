@@ -256,7 +256,7 @@
         if (a.y < 0 || a.y > height) { a.vy *= -1; }
         ctx.beginPath();
         ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(183,255,74,0.55)';
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(91,140,255,0.6)' : (i % 3 === 1 ? 'rgba(66,232,213,0.55)' : 'rgba(183,255,74,0.5)');
         ctx.fill();
         for (var j = i + 1; j < dots.length; j++) {
           var b = dots[j];
@@ -278,6 +278,25 @@
     window.addEventListener('resize', resize);
     resize();
     window.requestAnimationFrame(frame);
+  }
+
+  /* Subtle pointer parallax on selected hero elements (disabled with reduced motion) */
+  function initParallax() {
+    var items = $all('[data-parallax]');
+    if (!items.length || reduceMotion || !window.matchMedia('(pointer: fine)').matches) { return; }
+    var zone = document.querySelector('.hero') || document.body;
+    zone.addEventListener('mousemove', function (event) {
+      var rect = zone.getBoundingClientRect();
+      var x = (event.clientX - rect.left) / rect.width - 0.5;
+      var y = (event.clientY - rect.top) / rect.height - 0.5;
+      items.forEach(function (item) {
+        var depth = parseFloat(item.getAttribute('data-parallax')) || 10;
+        item.style.transform = 'translate3d(' + (x * depth).toFixed(1) + 'px,' + (y * depth).toFixed(1) + 'px,0)';
+      });
+    });
+    zone.addEventListener('mouseleave', function () {
+      items.forEach(function (item) { item.style.transform = ''; });
+    });
   }
 
   window.addEventListener('pageshow', function (event) {
@@ -302,5 +321,6 @@
     initListFilter();
     initReveal();
     initParticles();
+    initParallax();
   });
 })();

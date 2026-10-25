@@ -9,6 +9,7 @@ from accounts.models import User
 from accounts.services import users_with_perm
 from analytics.activity import log_activity
 from analytics.models import ActivityLog
+from core.choices import Audience
 from core.exceptions import BusinessRuleError
 from core.permissions import REVIEW_EVENTS
 from gamification.services import evaluate_badges
@@ -23,10 +24,29 @@ def can_review(user):
     return user.is_authenticated and user.is_active and user.has_perm(REVIEW_EVENTS)
 
 
+def can_create(user):
+    """Events and campaigns are organised by associations, organization managers and reviewers."""
+    if not (user.is_authenticated and user.is_active):
+        return False
+    return (
+        can_review(user) or user.can_manage_organization
+        or user.organization_type == user.OrganizationType.ASSOCIATION
+    )
+
+
+def is_event_manager(user, event):
+    """The organizer, or a manager of the organization that owns the event."""
+    if not user.is_authenticated:
+        return False
+    if event.organizer_id == user.pk:
+        return True
+    return bool(event.organization_id and user.can_manage_organization and user.affiliation_id == event.organization_id)
+
+
 def can_edit(user, event):
     if can_review(user):
         return event.status not in (Event.Status.CANCELLED, Event.Status.COMPLETED)
-    return event.organizer_id == user.pk and event.status == Event.Status.DRAFT
+    return is_event_manager(user, event) and event.status == Event.Status.DRAFT
 
 
 def can_delete(user, event):
@@ -34,23 +54,26 @@ def can_delete(user, event):
         return False
     if can_review(user):
         return True
-    return event.organizer_id == user.pk and event.status == Event.Status.DRAFT
+    return is_event_manager(user, event) and event.status == Event.Status.DRAFT
 
 
 def can_view(user, event):
     if event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED, Event.Status.CANCELLED):
         return True
-    return event.organizer_id == user.pk or can_review(user)
+    return is_event_manager(user, event) or can_review(user)
 
 
 def can_cancel(user, event):
-    return event.status == Event.Status.PUBLISHED and (event.organizer_id == user.pk or can_review(user))
+    return event.status == Event.Status.PUBLISHED and (is_event_manager(user, event) or can_review(user))
 
 
 @transaction.atomic
 def create_event(user, form):
+    if not can_create(user):
+        raise BusinessRuleError('Seuls les comptes association et les gestionnaires d’organisation peuvent créer un événement.')
     event = form.save(commit=False)
     event.organizer = user
+    event.organization = user.affiliation if user.can_manage_organization else None
     event.status = Event.Status.DRAFT
     event.save()
     log_activity(user, ActivityLog.Verb.EVENT_CREATED, f'Brouillon « {event.title} » créé.', link=event.get_absolute_url())
@@ -65,7 +88,7 @@ def update_event(user, event, form):
 
 @transaction.atomic
 def submit_for_review(user, event):
-    if event.organizer_id != user.pk:
+    if not is_event_manager(user, event):
         raise BusinessRuleError('Seul l’organisateur peut soumettre cet événement.')
     if event.status != Event.Status.DRAFT:
         raise BusinessRuleError('Seul un brouillon peut être soumis à validation.')
@@ -145,6 +168,21 @@ def complete_event(reviewer, event):
                  link=event.get_absolute_url())
 
 
+AUDIENCE_CATEGORY = {
+    Audience.STUDENTS: ('student',),
+    Audience.EMPLOYEES: ('employee',),
+    Audience.ASSOCIATIONS: ('association',),
+}
+
+
+def audience_allows(user, event):
+    """Whether the account category of ``user`` matches the public targeted by the event."""
+    allowed = AUDIENCE_CATEGORY.get(event.target_audience)
+    if allowed is None:
+        return True
+    return user.organization_type in allowed or user.is_superuser or event.organizer_id == user.pk
+
+
 def join_event(user, event):
     with transaction.atomic():
         event = Event.objects.select_for_update().get(pk=event.pk)
@@ -152,6 +190,10 @@ def join_event(user, event):
             raise BusinessRuleError('Cet événement n’est pas ouvert aux inscriptions.')
         if event.has_ended:
             raise BusinessRuleError('Cet événement est terminé.')
+        if event.registration_closed:
+            raise BusinessRuleError('La date limite d’inscription est dépassée.')
+        if not audience_allows(user, event):
+            raise BusinessRuleError('Cet événement s’adresse à un autre public.')
         if EventParticipation.objects.filter(event=event, user=user).exists():
             raise BusinessRuleError('Vous êtes déjà inscrit·e à cet événement.')
         if event.capacity is not None and event.participations.count() >= event.capacity:

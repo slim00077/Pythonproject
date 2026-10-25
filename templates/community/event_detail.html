@@ -17,7 +17,8 @@
         <span>{% icon 'clock' 14 %} {{ event.start_at|date:'l d F Y, H:i' }} → {{ event.end_at|date:'d/m H:i' }}</span>
         <span>{% if event.format == 'online' %}{% icon 'globe' 14 %} En ligne{% else %}{% icon 'map-pin' 14 %} {{ event.location }}{% endif %}{% if event.format == 'hybrid' %} + en ligne{% endif %}</span>
         <span>{% icon 'users' 14 %} {{ event.get_target_audience_display }}</span>
-        {% if event.organizer %}<span>{% icon 'user' 14 %} Organisé par {{ event.organizer|display_name }}</span>{% endif %}
+        {% if event.organization %}<span>{% icon 'building' 14 %} {{ event.organization.name }}</span>{% elif event.organizer %}<span>{% icon 'user' 14 %} Organisé par {{ event.organizer|display_name }}</span>{% endif %}
+        {% if event.registration_deadline %}<span class="{% if event.registration_closed %}text-gold{% endif %}">{% icon 'clock' 14 %} Inscriptions jusqu’au {{ event.registration_deadline|date:'d/m/Y H:i' }}</span>{% endif %}
       </div>
     </div>
     <div class="hero-stats">

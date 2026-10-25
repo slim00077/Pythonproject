@@ -97,7 +97,7 @@ class ProfileTests(TestCase):
         })
         self.assertRedirects(response, reverse('accounts:profile'))
         user.refresh_from_db()
-        self.assertEqual(user.organization_type, 'employee')
+        self.assertEqual(user.organization_type, 'student')  # the category is changed by an administrator only
         self.assertEqual(user.username, 'carla')
         self.assertFalse(user.is_superuser or user.is_staff)
 
@@ -201,7 +201,7 @@ class RoleManagementTests(TestCase):
     def test_superuser_manages_user_access_but_not_other_admins(self):
         group = Group.objects.create(name='Modérateur')
         self.client.force_login(self.admin)
-        response = self.client.post(reverse('accounts:user_edit', args=[self.user.pk]), {'groups': [group.pk]})
+        response = self.client.post(reverse('accounts:user_edit', args=[self.user.pk]), {'groups': [group.pk], 'organization_type': 'student'})
         self.assertRedirects(response, reverse('accounts:user_list'))
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)

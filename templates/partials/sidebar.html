@@ -1,70 +1,30 @@
 {% load eco_tags %}
-{% with ns=request.resolver_match.namespace url_name=request.resolver_match.url_name %}
-<aside class="sidebar" id="sidebar" aria-label="Menu latéral">
+{% with ns=request.resolver_match.namespace url_name=request.resolver_match.url_name scope=request.GET.scope %}
+<aside class="sidebar sidebar-{{ nav.kind }}" id="sidebar" aria-label="Menu latéral">
   <div class="sidebar-brand">
-    <a class="brand" href="{% url 'core:home' %}" aria-label="EcoTeams — accueil">
+    <a class="brand" href="{% if nav.is_admin %}{% url 'analytics:admin_dashboard' %}{% else %}{% url 'core:home' %}{% endif %}" aria-label="EcoTeams — accueil">
       <span class="brand-mark">{% icon 'leaf' 20 %}</span>
       <span class="brand-name">Eco<span>Teams</span></span>
     </a>
   </div>
+  <div class="space-badge space-{{ nav.kind }}">
+    {% if nav.kind == 'admin' %}{% icon 'shield-check' 14 %} Centre de contrôle
+    {% elif nav.kind == 'employee' %}{% icon 'briefcase' 14 %} Éco-hub entreprise
+    {% elif nav.kind == 'association' %}{% icon 'heart' 14 %} Centre d’impact citoyen
+    {% else %}{% icon 'graduation-cap' 14 %} Éco-hub étudiant{% endif %}
+  </div>
   <nav class="sidebar-nav" aria-label="Navigation de l’application">
-    <div class="nav-label">Mon espace</div>
-    <a class="nav-link {% if ns == 'analytics' and url_name == 'dashboard' %}active{% endif %}" href="{% url 'analytics:dashboard' %}">{% icon 'dashboard' %} Tableau de bord</a>
-    <a class="nav-link {% if ns == 'analytics' and url_name == 'history' %}active{% endif %}" href="{% url 'analytics:history' %}">{% icon 'history' %} Historique</a>
-    <a class="nav-link {% if ns == 'notifications' %}active{% endif %}" href="{% url 'notifications:list' %}">{% icon 'bell' %} Notifications
-      {% if unread_notifications_count %}<span class="nav-badge">{{ unread_notifications_count }}</span>{% endif %}</a>
+    {% if nav.kind == 'admin' %}{% include 'partials/sidebar_admin.html' %}
+    {% elif nav.kind == 'employee' %}{% include 'partials/sidebar_employee.html' %}
+    {% elif nav.kind == 'association' %}{% include 'partials/sidebar_association.html' %}
+    {% else %}{% include 'partials/sidebar_student.html' %}{% endif %}
 
-    <div class="nav-label">Compétition</div>
-    <a class="nav-link {% if ns == 'teams' %}active{% endif %}" href="{% url 'teams:list' %}">{% icon 'users' %} Équipes</a>
-    <a class="nav-link {% if ns == 'challenges' %}active{% endif %}" href="{% url 'challenges:list' %}">{% icon 'flag' %} Défis</a>
-    <a class="nav-link {% if ns == 'analytics' and url_name == 'leaderboard' %}active{% endif %}" href="{% url 'analytics:leaderboard' %}">{% icon 'trophy' %} Classement</a>
-
-    <div class="nav-label">Mes engagements</div>
-    <a class="nav-link {% if ns == 'actions' %}active{% endif %}" href="{% url 'actions:list' %}">{% icon 'leaf' %} Actions écologiques</a>
-    <a class="nav-link {% if ns == 'goals' %}active{% endif %}" href="{% url 'goals:list' %}">{% icon 'target' %} Objectifs</a>
-    <a class="nav-link {% if ns == 'gamification' and url_name == 'achievements' %}active{% endif %}" href="{% url 'gamification:achievements' %}">{% icon 'award' %} Badges et points</a>
-
-    <div class="nav-label">Communauté</div>
-    <a class="nav-link {% if ns == 'community' %}active{% endif %}" href="{% url 'community:list' %}">{% icon 'calendar' %} Événements</a>
-
-    {% if nav.backoffice %}
-      <div class="nav-label">Administration</div>
-      <a class="nav-link {% if url_name == 'admin_dashboard' %}active{% endif %}" href="{% url 'analytics:admin_dashboard' %}">{% icon 'gauge' %} Vue d’ensemble</a>
-      {% if nav.moderate_actions %}
-        <a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':10' == 'moderation' %}active{% endif %}" href="{% url 'actions_admin:moderation_list' %}">{% icon 'clipboard-check' %} Modération
-          {% if nav.pending_actions %}<span class="nav-badge">{{ nav.pending_actions }}</span>{% endif %}</a>
-      {% endif %}
-      {% if nav.review_challenges %}
-        <a class="nav-link {% if ns == 'challenges_admin' %}active{% endif %}" href="{% url 'challenges_admin:review_list' %}">{% icon 'flag' %} Défis à valider
-          {% if nav.pending_challenges %}<span class="nav-badge">{{ nav.pending_challenges }}</span>{% endif %}</a>
-      {% endif %}
-      {% if nav.review_events %}
-        <a class="nav-link {% if ns == 'community_admin' %}active{% endif %}" href="{% url 'community_admin:review_list' %}">{% icon 'megaphone' %} Événements à valider
-          {% if nav.pending_events %}<span class="nav-badge">{{ nav.pending_events }}</span>{% endif %}</a>
-      {% endif %}
-      {% if nav.manage_action_types %}
-        <a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':4' == 'type' %}active{% endif %}" href="{% url 'actions_admin:type_list' %}">{% icon 'layers' %} Catalogue d’actions</a>
-      {% endif %}
-      {% if nav.manage_badges %}
-        <a class="nav-link {% if ns == 'gamification' and url_name|slice:':5' == 'badge' %}active{% endif %}" href="{% url 'gamification:badge_list' %}">{% icon 'medal' %} Badges</a>
-      {% endif %}
-      {% if nav.adjust_points %}
-        <a class="nav-link {% if ns == 'gamification' and url_name == 'ledger' or url_name == 'adjust' %}active{% endif %}" href="{% url 'gamification:ledger' %}">{% icon 'zap' %} Registre des points</a>
-      {% endif %}
-      {% if nav.view_reports %}
-        <a class="nav-link {% if url_name == 'reports' %}active{% endif %}" href="{% url 'analytics:reports' %}">{% icon 'pie-chart' %} Rapports</a>
-      {% endif %}
-      {% if nav.is_admin %}
-        <a class="nav-link {% if ns == 'accounts' and url_name|slice:':4' == 'role' %}active{% endif %}" href="{% url 'accounts:role_list' %}">{% icon 'shield' %} Rôles et permissions</a>
-        <a class="nav-link {% if ns == 'accounts' and url_name|slice:':4' == 'user' %}active{% endif %}" href="{% url 'accounts:user_list' %}">{% icon 'user' %} Utilisateurs</a>
-        <a class="nav-link" href="{% url 'admin:index' %}">{% icon 'sliders' %} Admin Django</a>
-      {% endif %}
-    {% endif %}
+    {% if nav.backoffice and not nav.is_admin %}{% include 'partials/sidebar_backoffice.html' %}{% endif %}
   </nav>
   <div class="sidebar-foot">
     <a class="sidebar-user" href="{% url 'accounts:profile' %}">
       {% include 'partials/avatar.html' with u=user %}
-      <span class="meta"><strong>{{ user|display_name }}</strong><span>{% if user.is_superuser %}Administrateur{% else %}@{{ user.username }}{% endif %}</span></span>
+      <span class="meta"><strong>{{ user|display_name }}</strong><span>{% if user.is_superuser %}Administrateur{% else %}{{ user.get_organization_type_display }}{% endif %}</span></span>
     </a>
   </div>
 </aside>

@@ -1,0 +1,33 @@
+{% load eco_tags %}
+<div class="nav-label">Pilotage</div>
+<a class="nav-link {% if ns == 'analytics' and url_name == 'admin_dashboard' %}active{% endif %}" href="{% url 'analytics:admin_dashboard' %}">{% icon 'gauge' %} Vue d’ensemble</a>
+<a class="nav-link {% if url_name == 'admin_stats' %}active{% endif %}" href="{% url 'analytics:admin_stats' %}">{% icon 'bar-chart' %} Statistiques globales</a>
+
+<div class="nav-label">Comptes et accès</div>
+<a class="nav-link {% if ns == 'accounts' and url_name|slice:':4' == 'user' %}active{% endif %}" href="{% url 'accounts:user_list' %}">{% icon 'user' %} Utilisateurs et comptes</a>
+<a class="nav-link {% if ns == 'accounts' and url_name|slice:':4' == 'role' %}active{% endif %}" href="{% url 'accounts:role_list' %}">{% icon 'shield' %} Rôles et permissions</a>
+<a class="nav-link {% if ns == 'organizations' %}active{% endif %}" href="{% url 'organizations:admin_list' %}">{% icon 'building' %} Organisations</a>
+<a class="nav-link {% if ns == 'teams' %}active{% endif %}" href="{% url 'teams:list' %}">{% icon 'users' %} Équipes</a>
+
+<div class="nav-label">Contenus et modération</div>
+<a class="nav-link {% if ns == 'challenges' %}active{% endif %}" href="{% url 'challenges:list' %}?status=all">{% icon 'flag' %} Défis écologiques</a>
+<a class="nav-link {% if ns == 'challenges_admin' %}active{% endif %}" href="{% url 'challenges_admin:review_list' %}">{% icon 'clipboard-check' %} File d’approbation des défis
+  {% if nav.pending_challenges %}<span class="nav-badge warn">{{ nav.pending_challenges }}</span>{% endif %}</a>
+<a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':10' == 'moderation' %}active{% endif %}" href="{% url 'actions_admin:moderation_list' %}">{% icon 'leaf' %} Modération des actions
+  {% if nav.pending_actions %}<span class="nav-badge warn">{{ nav.pending_actions }}</span>{% endif %}</a>
+<a class="nav-link {% if ns == 'community' or ns == 'community_admin' %}active{% endif %}" href="{% url 'community_admin:review_list' %}">{% icon 'megaphone' %} Campagnes et événements
+  {% if nav.pending_events %}<span class="nav-badge warn">{{ nav.pending_events }}</span>{% endif %}</a>
+
+<div class="nav-label">Récompenses et règles</div>
+<a class="nav-link {% if ns == 'gamification' and url_name|slice:':5' == 'badge' %}active{% endif %}" href="{% url 'gamification:badge_list' %}">{% icon 'medal' %} Badges et récompenses</a>
+<a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':4' == 'type' or ns == 'gamification' and url_name == 'ledger' or url_name == 'adjust' %}active{% endif %}" href="{% url 'actions_admin:type_list' %}">{% icon 'zap' %} Points et barèmes</a>
+<a class="nav-link {% if ns == 'notifications' and url_name == 'announce' %}active{% endif %}" href="{% url 'notifications:announce' %}">{% icon 'send' %} Notifications et annonces</a>
+
+<div class="nav-label">Traçabilité</div>
+<a class="nav-link {% if url_name == 'audit_log' %}active{% endif %}" href="{% url 'analytics:audit_log' %}">{% icon 'history' %} Journaux d’audit</a>
+<a class="nav-link {% if ns == 'analytics' and url_name|slice:':7' == 'reports' %}active{% endif %}" href="{% url 'analytics:reports' %}">{% icon 'file-text' %} Rapports</a>
+<a class="nav-link" href="{% url 'admin:index' %}">{% icon 'sliders' %} Admin Django</a>
+<form method="post" action="{% url 'accounts:logout' %}" class="inline-form" data-no-lock>
+  {% csrf_token %}
+  <button class="nav-link nav-link-button" type="submit">{% icon 'log-out' %} Se déconnecter</button>
+</form>

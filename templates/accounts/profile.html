@@ -10,7 +10,7 @@
       <h1>{{ profile_user|display_name }}</h1>
       <div class="entity-meta">
         <span>@{{ profile_user.username }}</span>
-        <span>{% icon 'briefcase' 14 %} {{ profile_user.get_organization_type_display }}{% if profile_user.organization %} · {{ profile_user.organization }}{% endif %}</span>
+        <span>{% icon 'briefcase' 14 %} {{ profile_user.get_organization_type_display }}{% if profile_user.affiliation %} · {{ profile_user.affiliation.name }}{% elif profile_user.organization %} · {{ profile_user.organization }}{% endif %}</span>
         {% if profile_user.city %}<span>{% icon 'map-pin' 14 %} {{ profile_user.city }}</span>{% endif %}
         <span>{% icon 'calendar' 14 %} Membre depuis {{ profile_user.date_joined|date:'F Y' }}</span>
       </div>

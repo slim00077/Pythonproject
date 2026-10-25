@@ -1,0 +1,41 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Organisations{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'building' 14 %} Centre de contrôle</span>
+    <h1>Organisations</h1>
+    <p class="page-sub">Entreprises et associations. Rattachez les comptes depuis « Utilisateurs et comptes ».</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'organizations:admin_create' %}">{% icon 'plus' 18 %} Nouvelle organisation</a></div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label class="field-label" for="q">Rechercher</label><input class="input" id="q" type="search" name="q" value="{{ query }}" placeholder="Nom, ville…"></div>
+  <div class="field"><label class="field-label" for="kind">Type</label>
+    <select class="input" id="kind" name="kind"><option value="">Tous</option>{% for value, label in kinds %}<option value="{{ value }}" {% if kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Filtrer</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Organisation</th><th>Type</th><th class="num">Comptes</th><th class="num">Équipes</th><th class="num">Événements</th><th class="num">Défis</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for org in page %}
+        <tr>
+          <td><strong>{{ org.name }}</strong><div class="small muted">{{ org.city|default:'—' }}</div></td>
+          <td><span class="pill tone-{% if org.kind == 'company' %}info{% else %}success{% endif %}">{{ org.get_kind_display }}</span></td>
+          <td class="num">{{ org.member_total }}</td><td class="num">{{ org.team_total }}</td><td class="num">{{ org.event_total }}</td><td class="num">{{ org.challenge_total }}</td>
+          <td>{% if org.is_active %}<span class="pill tone-success">Active</span>{% else %}<span class="pill tone-muted">Désactivée</span>{% endif %}</td>
+          <td class="actions-cell">
+            <a class="btn btn-ghost btn-sm" href="{% url 'organizations:admin_update' org.pk %}">{% icon 'edit' 14 %} Modifier</a>
+            <a class="btn btn-danger btn-sm" href="{% url 'organizations:admin_delete' org.pk %}">{% icon 'trash' 14 %}</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% url 'organizations:admin_create' as create_url %}{% include 'partials/empty.html' with icon='building' title='Aucune organisation' text='Créez une entreprise ou une association pour y rattacher des comptes.' cta_url=create_url cta_label='Nouvelle organisation' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

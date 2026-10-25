@@ -1,0 +1,128 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Centre d’impact citoyen{% endblock %}
+{% block content %}
+{% if not d.organization %}
+  <section class="holo banner banner-association" style="grid-template-columns:auto 1fr">
+    <div class="org-logo">{% icon 'heart' 40 %}</div>
+    <div>
+      <span class="eyebrow">{% icon 'heart' 14 %} Centre d’impact citoyen</span>
+      <h1>Bienvenue, {{ user.first_name|default:user.username }}</h1>
+      <p>Créez le profil de votre association pour organiser des campagnes, publier des événements, proposer des défis et mesurer votre impact. Si votre association existe déjà sur EcoTeams, demandez à un administrateur de vous y rattacher.</p>
+      <a class="btn btn-primary btn-lg" href="{% url 'organizations:create' %}">{% icon 'plus' 20 %} Créer mon organisation</a>
+    </div>
+  </section>
+{% else %}
+{% with org=d.organization c=d.c %}
+<section class="holo banner banner-association">
+  <div class="org-logo">{% if org.logo %}<img src="{{ org.logo.url }}" alt="Logo de {{ org.name }}">{% else %}{% icon 'building' 40 %}{% endif %}</div>
+  <div>
+    <span class="eyebrow">{% icon 'heart' 14 %} Centre d’impact citoyen</span>
+    <h1>{{ org.name }}</h1>
+    <div class="banner-meta">
+      {% if org.focus_area %}<span>{% icon org.focus_area|category_icon 15 %} {{ org.get_focus_area_display }}</span>{% endif %}
+      {% if org.city %}<span>{% icon 'map-pin' 15 %} {{ org.city }}</span>{% endif %}
+      <span>{% icon 'users' 15 %} {{ d.members_total }} compte{{ d.members_total|pluralize }} rattaché{{ d.members_total|pluralize }}</span>
+    </div>
+    <p>{{ org.mission|default:'Ajoutez la mission de votre association dans le profil de l’organisation pour la présenter aux participants.'|truncatechars:240 }}</p>
+    <div class="row">
+      {% if d.can_manage %}
+        <a class="btn btn-primary" href="{% url 'community:create' %}?kind=campaign">{% icon 'megaphone' 18 %} Nouvelle campagne</a>
+        <a class="btn btn-secondary" href="{% url 'community:create' %}?kind=event">{% icon 'calendar' 18 %} Nouvel événement</a>
+        <a class="btn btn-ghost" href="{% url 'challenges:create' %}">{% icon 'flag' 18 %} Proposer un défi</a>
+      {% else %}
+        <a class="btn btn-secondary" href="{% url 'organizations:detail' %}">{% icon 'building' 18 %} Voir le profil</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="banner-art">
+    <div class="text-center"><div class="stat-label">Inscriptions reçues</div><div class="stat-value" style="font-size:2.6rem" data-count-to="{{ c.registration_total }}">{{ c.registration_total }}</div></div>
+  </div>
+</section>
+
+<div class="kpi-grid">
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'megaphone' 16 %} Campagnes</div><div class="kpi-value">{{ c.campaign_total }}</div><div class="kpi-hint">{{ c.draft_total }} brouillon{{ c.draft_total|pluralize }} ou en validation</div></div>
+  <div class="card kpi-tile k-cyan"><div class="kpi-label">{% icon 'calendar' 16 %} Événements</div><div class="kpi-value">{{ c.event_total }}</div><div class="kpi-hint">{{ d.upcoming_events|length }} à venir</div></div>
+  <div class="card kpi-tile k-blue"><div class="kpi-label">{% icon 'users' 16 %} Inscriptions</div><div class="kpi-value">{{ c.registration_total }}</div><div class="kpi-hint">sur l’ensemble de vos événements</div></div>
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'check-circle' 16 %} Initiatives terminées</div><div class="kpi-value">{{ c.completed_total }}</div><div class="kpi-hint">événements et campagnes clôturés</div></div>
+  <div class="card kpi-tile k-amber"><div class="kpi-label">{% icon 'leaf' 16 %} Actions vérifiées</div><div class="kpi-value">{{ c.verified_actions }}</div><div class="kpi-hint">liées à vos défis · ≈ {{ d.co2|floatformat:1 }} kg CO₂ (estim.)</div></div>
+</div>
+
+<div class="bento">
+  <div class="span-8 stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'megaphone' %} Campagnes en cours et à venir</h2><p class="card-sub">Vos campagnes publiées</p></div>{% if d.can_manage %}<a class="card-link" href="{% url 'organizations:campaigns' %}">Gérer {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+      <div class="grid grid-2">
+        {% for campaign in d.current_campaigns %}
+          <a class="card card-hover" href="{{ campaign.get_absolute_url }}" style="color:inherit">
+            <span class="pill tone-success mb-1">En cours</span>
+            <h3>{{ campaign.title }}</h3>
+            <div class="progress mt-1"><div class="progress-bar green" style="width:0" data-width="{{ campaign.time_progress }}"></div></div>
+            <div class="progress-meta"><span>Jusqu’au {{ campaign.end_at|date:'d/m/Y' }}</span><span>{{ campaign.participant_total }} participant{{ campaign.participant_total|pluralize }}</span></div>
+          </a>
+        {% endfor %}
+        {% for campaign in d.upcoming_campaigns %}
+          <a class="card card-hover" href="{{ campaign.get_absolute_url }}" style="color:inherit">
+            <span class="pill tone-blue mb-1">À venir</span>
+            <h3>{{ campaign.title }}</h3>
+            <p class="small muted mb-0">{% icon 'calendar' 14 %} Début le {{ campaign.start_at|date:'d/m/Y H:i' }}</p>
+          </a>
+        {% endfor %}
+        {% if not d.current_campaigns and not d.upcoming_campaigns %}
+          <div style="grid-column:1/-1">
+            {% url 'community:create' as create_url %}
+            {% if d.can_manage %}{% include 'partials/empty.html' with icon='megaphone' title='Aucune campagne publiée' text='Créez une campagne : elle sera publiée après validation par l’équipe EcoTeams.' cta_url=create_url cta_label='Créer une campagne' %}
+            {% else %}{% include 'partials/empty.html' with icon='megaphone' title='Aucune campagne publiée' text='Les campagnes de votre association apparaîtront ici.' %}{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'trending-up' %} Évolution des inscriptions</h2><p class="card-sub">8 dernières semaines</p></div>{% if d.can_manage %}<a class="card-link" href="{% url 'organizations:impact' %}">Impact détaillé {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+      {{ registrations_chart|json_script:'assoc-registrations' }}
+      <div class="chart" data-chart="line" data-source="assoc-registrations" aria-label="Inscriptions par semaine" data-empty="Aucune inscription reçue pour le moment."></div>
+    </div>
+  </div>
+
+  <div class="span-4 stack">
+    <div class="card holo">
+      <div class="card-head"><h3>{% icon 'calendar' %} Prochains événements</h3>{% if d.can_manage %}<a class="card-link" href="{% url 'organizations:events' %}">Tous {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+      <ul class="list">
+        {% for event in d.upcoming_events %}
+          <li class="list-item"><span class="date-tile" style="width:46px"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d" style="font-size:1.1rem">{{ event.start_at|date:'d' }}</span></span>
+            <span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title|truncatechars:30 }}</a><span class="sub">{{ event.start_at|date:'H:i' }}{% if event.capacity %} · {{ event.capacity }} places{% endif %}</span></span></li>
+        {% empty %}<li class="muted small">Aucun événement programmé.</li>{% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'flag' %} Défis proposés</h3>{% if d.can_manage %}<a class="card-link" href="{% url 'organizations:proposals' %}">Gérer {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+      {% if d.proposal_total %}
+        <div class="chips">
+          <span class="chip">Brouillons <span class="count">{{ d.proposals.draft|default:0 }}</span></span>
+          <span class="chip"><span class="text-amber">En attente</span> <span class="count">{{ d.proposals.pending|default:0 }}</span></span>
+          <span class="chip"><span class="text-green">Publiés</span> <span class="count">{{ d.proposals.active|default:0 }}</span></span>
+        </div>
+        <p class="estimate-note mt-2 mb-0">{% icon 'info' 14 %} Un défi proposé reste en attente jusqu’à sa validation par un administrateur.</p>
+      {% else %}
+        <p class="muted small mb-0">Aucune proposition pour l’instant. Les défis que vous proposez sont validés par un administrateur avant publication.</p>
+      {% endif %}
+    </div>
+
+    {% if d.can_manage %}
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'users' %} Dernières inscriptions</h3><a class="card-link" href="{% url 'organizations:participants' %}">Participants {% icon 'arrow-right' 14 %}</a></div>
+      <ul class="list">
+        {% for registration in d.recent_registrations %}
+          <li class="list-item">{% include 'partials/avatar.html' with u=registration.user size='sm' %}
+            <span class="grow"><span class="title">{{ registration.user|display_name }}</span><span class="sub">{{ registration.event.title|truncatechars:30 }} · {{ registration.joined_at|naturaltime }}</span></span></li>
+        {% empty %}<li class="muted small">Aucune inscription reçue.</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+{% endblock %}

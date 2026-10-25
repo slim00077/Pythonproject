@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import F, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -20,6 +21,12 @@ def team_list(request):
     form = TeamFilterForm(request.GET or None)
     teams = annotate_team_stats(Team.objects.exclude(status=Team.Status.ARCHIVED).select_related('captain'))
     sort = 'points'
+    scope = request.GET.get('scope', '')
+    if scope == 'org':
+        teams = teams.filter(organization_id=request.user.affiliation_id) if request.user.affiliation_id else teams.none()
+    elif not request.user.is_superuser:
+        # Workplace teams are only listed for the members of their organization.
+        teams = teams.filter(Q(organization__isnull=True) | Q(organization_id=request.user.affiliation_id))
     if form.is_valid():
         data = form.cleaned_data
         if data['q']:
@@ -37,7 +44,7 @@ def team_list(request):
     for team in page:
         team.rank = ranks.get(team.pk)
     return render(request, 'teams/team_list.html', {
-        'form': form, 'page': page, 'my_membership': services.get_membership(request.user),
+        'form': form, 'page': page, 'my_membership': services.get_membership(request.user), 'scope': scope,
     })
 
 
@@ -71,6 +78,8 @@ def team_create(request):
 @login_required
 def team_detail(request, slug):
     team = get_object_or_404(Team.objects.select_related('captain'), slug=slug)
+    if not services.can_view_team(request.user, team):
+        raise Http404
     membership = services.get_membership(request.user)
     is_member = membership is not None and membership.team_id == team.pk
     stats = team_dashboard(team)
@@ -81,7 +90,7 @@ def team_detail(request, slug):
         'is_member': is_member,
         'is_captain': services.is_captain(request.user, team),
         'can_manage': services.can_manage_team(request.user, team),
-        'can_join': membership is None and team.accepts_members,
+        'can_join': membership is None and team.accepts_members and services.can_join_team(request.user, team),
         'my_membership': membership,
     })
 

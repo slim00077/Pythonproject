@@ -1,0 +1,37 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Défis proposés{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'flag' 14 %} {{ organization.name }}</span>
+    <h1>Défis proposés</h1>
+    <p class="page-sub">Vos propositions restent « en attente de validation » jusqu’à ce qu’un administrateur les publie. Vous ne pouvez pas approuver vos propres défis.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'challenges:create' %}">{% icon 'plus' 18 %} Proposer un défi</a></div>
+</div>
+<div class="tabs">
+  <a class="tab {% if not status %}active{% endif %}" href="?">Tous</a>
+  {% for value, label in statuses %}<a class="tab {% if status == value %}active{% endif %}" href="?status={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>{% endfor %}
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Défi</th><th>Catégorie</th><th>Période</th><th class="num">Participants</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for challenge in page %}
+        <tr>
+          <td><a href="{{ challenge.get_absolute_url }}"><strong>{{ challenge.title|truncatechars:44 }}</strong></a>{% if challenge.review_notes and challenge.status == 'draft' %}<div class="small text-amber">Retour : {{ challenge.review_notes|truncatechars:70 }}</div>{% endif %}</td>
+          <td class="small">{% icon challenge.category|category_icon 14 %} {{ challenge.get_category_display }}</td>
+          <td class="nowrap small">{{ challenge.start_date|date:'d/m' }} → {{ challenge.end_date|date:'d/m/Y' }}</td>
+          <td class="num">{{ challenge.participant_total }}</td>
+          <td><span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span></td>
+          <td class="actions-cell"><a class="btn btn-ghost btn-sm" href="{{ challenge.get_absolute_url }}">{% icon 'eye' 14 %} Ouvrir</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include 'partials/empty.html' with icon='flag' title='Aucun défi proposé' text='Proposez un défi à la communauté : il sera validé avant publication.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

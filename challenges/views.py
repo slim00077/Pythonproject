@@ -33,6 +33,10 @@ def _visible_challenge(request, slug):
 def challenge_list(request):
     form = ChallengeFilterForm(request.GET or None)
     challenges = Challenge.objects.annotate(participant_total=Count('participations', filter=ACTIVE_PARTICIPANTS))
+    scope = request.GET.get('scope', '')
+    if scope == 'org':
+        # « Défis d'entreprise »: only the challenges proposed by the user's own organization.
+        challenges = challenges.filter(organization_id=request.user.affiliation_id) if request.user.affiliation_id             else challenges.none()
     status, sort = 'active', 'ending'
     if form.is_valid():
         data = form.cleaned_data
@@ -60,7 +64,7 @@ def challenge_list(request):
         ChallengeParticipation.objects.filter(user=request.user, challenge__in=list(page))
         .values_list('challenge_id', 'status')
     )
-    return render(request, 'challenges/challenge_list.html', {'form': form, 'page': page, 'mine': mine})
+    return render(request, 'challenges/challenge_list.html', {'form': form, 'page': page, 'mine': mine, 'scope': scope})
 
 
 @login_required

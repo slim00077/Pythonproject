@@ -18,6 +18,11 @@
       <option value="admin" {% if role == 'admin' %}selected{% endif %}>Administrateurs</option>
       {% for group in groups %}<option value="{{ group.pk }}" {% if role == group.pk|stringformat:'s' %}selected{% endif %}>{{ group.name }}</option>{% endfor %}
     </select></div>
+  <div class="field"><label class="field-label" for="category">Catégorie</label>
+    <select class="input" id="category" name="category">
+      <option value="">Toutes</option>
+      {% for value, label in categories %}<option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
   <div class="field"><label class="field-label" for="status">Statut</label>
     <select class="input" id="status" name="status">
       <option value="">Tous</option>
@@ -28,11 +33,12 @@
 </form>
 <div class="table-wrap">
   <table class="table">
-    <thead><tr><th>Utilisateur</th><th>Équipe</th><th>Rôles</th><th class="num">Points</th><th>Inscription</th><th>Statut</th><th></th></tr></thead>
+    <thead><tr><th>Utilisateur</th><th>Catégorie</th><th>Équipe</th><th>Rôles</th><th class="num">Points</th><th>Inscription</th><th>Statut</th><th></th></tr></thead>
     <tbody>
       {% for member in page %}
         <tr>
           <td><div class="who">{% include 'partials/avatar.html' with u=member size='sm' %}<span><strong>{{ member|display_name }}</strong><span>@{{ member.username }} · {{ member.email }}</span></span></div></td>
+          <td><span class="pill tone-info">{{ member.get_organization_type_display }}</span>{% if member.affiliation %}<div class="small muted">{{ member.affiliation.name }}{% if member.is_org_manager %} · gestionnaire{% endif %}</div>{% endif %}</td>
           <td>{% if member.membership %}<a href="{{ member.membership.team.get_absolute_url }}">{{ member.membership.team.name }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td><div class="chips">{% if member.is_superuser %}<span class="pill tone-gold">Administrateur</span>{% endif %}{% for group in member.groups.all %}<span class="pill tone-muted">{{ group.name }}</span>{% endfor %}</div></td>
           <td class="num">{{ member.points|intcomma }}</td>
@@ -41,7 +47,7 @@
           <td class="actions-cell">{% if not member.is_superuser %}<a class="btn btn-ghost btn-sm" href="{% url 'accounts:user_edit' member.pk %}">{% icon 'edit' 14 %} Gérer</a>{% endif %}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="7">{% include 'partials/empty.html' with icon='users' title='Aucun utilisateur trouvé' %}</td></tr>
+        <tr><td colspan="8">{% include 'partials/empty.html' with icon='users' title='Aucun utilisateur trouvé' %}</td></tr>
       {% endfor %}
     </tbody>
   </table>

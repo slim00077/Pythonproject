@@ -1,0 +1,20 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Historique d’activité{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'history' 14 %} {{ organization.name }}</span>
+    <h1>Historique d’activité</h1>
+    <p class="page-sub">Créations, soumissions et publications de vos événements, campagnes et défis, ainsi que les modifications du profil.</p>
+  </div>
+</div>
+<div class="card">
+  <ul class="timeline">
+    {% for log in page %}
+      <li class="timeline-item"><span class="timeline-dot">{% icon log.icon 16 %}</span><div class="timeline-body small">{% if log.link %}<a href="{{ log.link }}">{{ log.description }}</a>{% else %}{{ log.description }}{% endif %}<time>{{ log.actor|display_name }} · {{ log.created_at|date:'d/m/Y H:i' }}</time></div></li>
+    {% empty %}<li class="muted small">Aucune activité enregistrée.</li>{% endfor %}
+  </ul>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

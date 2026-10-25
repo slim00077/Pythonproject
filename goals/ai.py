@@ -1,7 +1,8 @@
-"""AI goal coach: builds a prompt from a user's own verified data and calls Claude.
+"""AI goal coach: builds a prompt from a user's own verified data and calls an LLM (Gemini or Claude).
 
 Design notes (justified at the oral):
-- The API key is read from the ``ANTHROPIC_API_KEY`` environment variable by the SDK, never from the code.
+- The API key comes from the environment (``GEMINI_API_KEY`` or ``ANTHROPIC_API_KEY``), never from the code.
+- The provider is chosen by ``ECOTEAMS_AI_PROVIDER`` (default: Gemini if a Gemini key is set, otherwise Claude).
 - Only non-identifying data is sent (no name, e-mail or username).
 - The user's free-text fields are wrapped in tags and declared as data, not instructions.
 - The advice is purely consultative: it never changes goals, points or badges.
@@ -81,60 +82,114 @@ def build_prompt(goal):
     )
 
 
+MISSING_KEY = 'Le coach IA n’est pas configuré (clé API manquante). Contactez l’administrateur.'
+BAD_KEY = 'Le coach IA n’est pas configuré correctement (clé API refusée).'
+RATE_LIMITED = 'Le service IA est très sollicité. Réessayez dans une minute.'
+TIMED_OUT = 'Le service IA a mis trop de temps à répondre. Réessayez.'
+UNREACHABLE = 'Impossible de joindre le service IA. Vérifiez la connexion du serveur.'
+SERVICE_ERROR = 'Le service IA a renvoyé une erreur. Réessayez plus tard.'
+
+
 def make_client():
-    """Build the SDK client. Isolated so that tests can replace it."""
+    """Build the SDK client of the configured provider. Isolated so that tests can replace it."""
+    if settings.ECOTEAMS_AI_PROVIDER == 'gemini':
+        from google import genai
+        from google.genai import types
+
+        return genai.Client(
+            api_key=settings.GEMINI_API_KEY or None,
+            http_options=types.HttpOptions(timeout=int(settings.ECOTEAMS_AI_TIMEOUT_SECONDS * 1000)),
+        )
     import anthropic
 
     return anthropic.Anthropic(timeout=settings.ECOTEAMS_AI_TIMEOUT_SECONDS, max_retries=1)
 
 
-def generate_advice(goal, client=None):
-    """Call Claude for ``goal``. Raises ``BusinessRuleError`` (French message) on any failure."""
+def _call_anthropic(client, prompt):
     import anthropic
 
-    if not settings.ECOTEAMS_AI_ENABLED:
-        raise BusinessRuleError('Le coach IA est désactivé sur ce serveur.')
-    try:
-        client = client or make_client()
-    except Exception:  # missing key or SDK misconfiguration
-        logger.exception('AI client could not be created')
-        raise BusinessRuleError('Le coach IA n’est pas configuré (clé API manquante). Contactez l’administrateur.')
-
-    started = time.monotonic()
     try:
         response = client.messages.create(
             model=settings.ECOTEAMS_AI_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS,
             system=SYSTEM_PROMPT,
             output_config={'effort': settings.ECOTEAMS_AI_EFFORT},
-            messages=[{'role': 'user', 'content': build_prompt(goal)}],
+            messages=[{'role': 'user', 'content': prompt}],
         )
     except TypeError as error:
         # The SDK only notices a missing API key when the request is built, not when the client is created.
         if 'authentication' not in str(error).lower():
             raise
         logger.error('AI credentials are not configured (set ANTHROPIC_API_KEY)')
-        raise BusinessRuleError('Le coach IA n’est pas configuré (clé API manquante). Contactez l’administrateur.')
+        raise BusinessRuleError(MISSING_KEY)
     except anthropic.AuthenticationError:
         logger.error('AI authentication failed (check ANTHROPIC_API_KEY)')
-        raise BusinessRuleError('Le coach IA n’est pas configuré correctement (clé API refusée).')
+        raise BusinessRuleError(BAD_KEY)
     except anthropic.RateLimitError:
-        raise BusinessRuleError('Le service IA est très sollicité. Réessayez dans une minute.')
+        raise BusinessRuleError(RATE_LIMITED)
     except anthropic.APITimeoutError:
-        raise BusinessRuleError('Le service IA a mis trop de temps à répondre. Réessayez.')
+        raise BusinessRuleError(TIMED_OUT)
     except anthropic.APIConnectionError:
-        raise BusinessRuleError('Impossible de joindre le service IA. Vérifiez la connexion du serveur.')
+        raise BusinessRuleError(UNREACHABLE)
     except anthropic.APIStatusError as error:
         logger.error('AI request failed (%s): %s', error.status_code, getattr(error, 'message', error))
-        raise BusinessRuleError('Le service IA a renvoyé une erreur. Réessayez plus tard.')
-    latency_ms = round((time.monotonic() - started) * 1000)
-
+        raise BusinessRuleError(SERVICE_ERROR)
     if response.stop_reason == 'refusal':
         raise BusinessRuleError('Le coach IA n’a pas pu répondre à cette demande.')
     text = ''.join(block.text for block in response.content if block.type == 'text').strip()
+    return text, response.model, response.usage.input_tokens, response.usage.output_tokens
+
+
+def _call_gemini(client, prompt):
+    from google.genai import errors, types
+
+    try:
+        response = client.models.generate_content(
+            model=settings.ECOTEAMS_AI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT, max_output_tokens=MAX_OUTPUT_TOKENS, temperature=0.7,
+            ),
+        )
+    except errors.ClientError as error:
+        text = f'{getattr(error, "status", "")} {getattr(error, "message", "")}'.lower()
+        if error.code in (401, 403) or 'api key' in text or 'api_key' in text:
+            logger.error('AI authentication failed (check GEMINI_API_KEY)')
+            raise BusinessRuleError(BAD_KEY)
+        if error.code == 429:
+            raise BusinessRuleError(RATE_LIMITED)
+        logger.error('AI request rejected (%s): %s', error.code, getattr(error, 'message', error))
+        raise BusinessRuleError(SERVICE_ERROR)
+    except errors.APIError as error:
+        logger.error('AI request failed (%s): %s', error.code, getattr(error, 'message', error))
+        raise BusinessRuleError(SERVICE_ERROR)
+    except Exception as error:  # network-level failures come from the HTTP library, not from the SDK
+        kind = type(error).__name__.lower()
+        if 'timeout' in kind:
+            raise BusinessRuleError(TIMED_OUT)
+        if 'connect' in kind or 'network' in kind:
+            raise BusinessRuleError(UNREACHABLE)
+        raise
+    text = (response.text or '').strip()
+    usage = response.usage_metadata
+    return (text, getattr(response, 'model_version', None) or settings.ECOTEAMS_AI_MODEL,
+            getattr(usage, 'prompt_token_count', 0) or 0, getattr(usage, 'candidates_token_count', 0) or 0)
+
+
+def generate_advice(goal, client=None):
+    """Call the configured LLM for ``goal``. Raises ``BusinessRuleError`` (French message) on any failure."""
+    if not settings.ECOTEAMS_AI_ENABLED:
+        raise BusinessRuleError('Le coach IA est désactivé sur ce serveur.')
+    try:
+        client = client or make_client()
+    except Exception:  # missing key or SDK misconfiguration
+        logger.exception('AI client could not be created')
+        raise BusinessRuleError(MISSING_KEY)
+
+    call = _call_gemini if settings.ECOTEAMS_AI_PROVIDER == 'gemini' else _call_anthropic
+    started = time.monotonic()
+    text, model, input_tokens, output_tokens = call(client, build_prompt(goal))
+    latency_ms = round((time.monotonic() - started) * 1000)
     if not text:
         raise BusinessRuleError('Le coach IA n’a renvoyé aucun conseil. Réessayez.')
-    return Advice(
-        text=text, model=response.model, latency_ms=latency_ms,
-        input_tokens=response.usage.input_tokens, output_tokens=response.usage.output_tokens,
-    )
+    return Advice(text=text, model=model, latency_ms=latency_ms, input_tokens=input_tokens, output_tokens=output_tokens)

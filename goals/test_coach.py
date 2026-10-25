@@ -45,7 +45,11 @@ def api_error(cls, status=500):
     return cls('boom', response=response, body=None)
 
 
-@override_settings(ECOTEAMS_AI_BACKGROUND=False, ECOTEAMS_AI_ENABLED=True)
+ANTHROPIC = {'ECOTEAMS_AI_PROVIDER': 'anthropic', 'ECOTEAMS_AI_MODEL': 'claude-opus-5-5'}
+GEMINI = {'ECOTEAMS_AI_PROVIDER': 'gemini', 'ECOTEAMS_AI_MODEL': 'gemini-flash-latest'}
+
+
+@override_settings(ECOTEAMS_AI_BACKGROUND=False, ECOTEAMS_AI_ENABLED=True, **ANTHROPIC)
 class GoalCoachTests(TestCase):
     def setUp(self):
         self.user = make_user('coach-user', first_name='Secret', email='secret@example.com')
@@ -223,3 +227,76 @@ class GoalCoachTests(TestCase):
             call_command('evaluate_goal_coach', limit=3, stdout=out)
         self.assertIn('latence_ms', out.getvalue())
         self.assertIn('taux_de_reussite_par_critere', out.getvalue())
+
+
+class FakeGemini:
+    """Stand-in for ``google.genai.Client``: exposes ``models.generate_content``."""
+
+    def __init__(self, text=ADVICE_TEXT, error=None):
+        self.calls = []
+        self.models = self
+        self._text, self._error = text, error
+
+    def generate_content(self, **kwargs):
+        self.calls.append(kwargs)
+        if self._error:
+            raise self._error
+        return SimpleNamespace(
+            text=self._text, model_version='gemini-test',
+            usage_metadata=SimpleNamespace(prompt_token_count=180, candidates_token_count=70),
+        )
+
+
+def gemini_error(cls, code, message='boom', status='ERROR'):
+    from google.genai import errors
+    return getattr(errors, cls)(code, {'error': {'code': code, 'message': message, 'status': status}})
+
+
+@override_settings(ECOTEAMS_AI_BACKGROUND=False, ECOTEAMS_AI_ENABLED=True, **GEMINI)
+class GeminiCoachTests(TestCase):
+    def setUp(self):
+        self.user = make_user('gem-user')
+        self.goal = Goal.objects.create(user=self.user, title='Vélo', target_value=10, current_progress=2,
+                                        unit='trajets', deadline=timezone.localdate() + timedelta(days=20))
+
+    def run_with(self, client):
+        with mock.patch.object(ai, 'make_client', return_value=client):
+            return services.request_advice(self.user, self.goal)
+
+    def test_success_is_stored_with_metrics_and_sends_system_prompt(self):
+        client = FakeGemini()
+        advice = self.run_with(client)
+        self.assertEqual(advice.status, GoalAdvice.Status.DONE)
+        self.assertEqual(advice.content, ADVICE_TEXT)
+        self.assertEqual((advice.input_tokens, advice.output_tokens, advice.model_name), (180, 70, 'gemini-test'))
+        call = client.calls[0]
+        self.assertEqual(call['model'], 'gemini-flash-latest')
+        self.assertIn('ne suis jamais', call['config'].system_instruction)
+        self.assertIn('2 / 10 trajets', call['contents'])
+
+    def test_api_errors_become_user_messages(self):
+        import httpx
+        cases = [
+            (gemini_error('ClientError', 400, 'API key not valid. Please pass a valid API key.'), 'clé API refusée'),
+            (gemini_error('ClientError', 403), 'clé API refusée'),
+            (gemini_error('ClientError', 429), 'sollicité'),
+            (gemini_error('ClientError', 404), 'erreur'),
+            (gemini_error('ServerError', 503), 'erreur'),
+            (httpx.ReadTimeout('slow'), 'trop de temps'),
+            (httpx.ConnectError('down'), 'joindre'),
+        ]
+        for error, expected in cases:
+            with self.subTest(error=repr(error)[:50]):
+                GoalAdvice.objects.all().delete()
+                advice = self.run_with(FakeGemini(error=error))
+                self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
+                self.assertIn(expected, advice.error)
+
+    def test_empty_or_blocked_answer(self):
+        self.assertIn('aucun conseil', self.run_with(FakeGemini(text=None)).error)
+
+    def test_missing_key_gives_explicit_message(self):
+        with override_settings(GEMINI_API_KEY=''):
+            advice = services.request_advice(self.user, self.goal)  # real client construction, no key
+        self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
+        self.assertIn('clé API manquante', advice.error)

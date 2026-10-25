@@ -595,7 +595,7 @@ coverage html          # rapport détaillé dans htmlcov/index.html
   après une erreur (`core/forms.py`).
 - ARIA : barres de progression (`role="progressbar"` + valeurs), anneaux (`role="img"` + texte), badges verrouillés
   annoncés, boutons-icônes nommés, résultat du coach dans une zone `aria-live="polite"`.
-- Contraste : toute la palette dépasse **4,5:1** sur les fonds (minimum mesuré 5,28:1 — bleu sur fond clair) ;
+- Contraste : toute la palette dépasse **4,5:1** sur les fonds (minimum mesuré 5,28:1 — bleu sur fond sombre) ;
   focus visible (`:focus-visible`), `prefers-reduced-motion` respecté.
 - Contrôle automatisé : `goals/test_accessibility.py`. **Audit à faire dans le navigateur** (Chrome → F12 → Lighthouse →
   Accessibilité, ou extension axe DevTools) sur `/goals/`, `/goals/<id>/`, `/achievements/`, `/admin/badges/` et

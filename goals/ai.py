@@ -109,6 +109,12 @@ def generate_advice(goal, client=None):
             output_config={'effort': settings.ECOTEAMS_AI_EFFORT},
             messages=[{'role': 'user', 'content': build_prompt(goal)}],
         )
+    except TypeError as error:
+        # The SDK only notices a missing API key when the request is built, not when the client is created.
+        if 'authentication' not in str(error).lower():
+            raise
+        logger.error('AI credentials are not configured (set ANTHROPIC_API_KEY)')
+        raise BusinessRuleError('Le coach IA n’est pas configuré (clé API manquante). Contactez l’administrateur.')
     except anthropic.AuthenticationError:
         logger.error('AI authentication failed (check ANTHROPIC_API_KEY)')
         raise BusinessRuleError('Le coach IA n’est pas configuré correctement (clé API refusée).')

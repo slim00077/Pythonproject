@@ -111,6 +111,19 @@ class GoalCoachTests(TestCase):
         self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
         self.assertIn('clé API manquante', advice.error)
 
+    def test_sdk_without_credentials_gives_explicit_message(self):
+        # Real behaviour of the SDK when no key is configured: TypeError raised while building the request.
+        error = TypeError('"Could not resolve authentication method. Expected one of api_key, auth_token"')
+        advice = self.run_with(FakeClient(error=error))
+        self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
+        self.assertIn('clé API manquante', advice.error)
+
+    def test_real_sdk_client_without_key_is_handled(self):
+        with mock.patch.dict('os.environ', {'ANTHROPIC_API_KEY': '', 'ANTHROPIC_AUTH_TOKEN': ''}),                 mock.patch('anthropic.Anthropic.__init__', autospec=True, side_effect=anthropic.Anthropic.__init__):
+            advice = services.request_advice(self.user, self.goal)
+        self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
+        self.assertTrue(advice.error)
+
     def test_unexpected_bug_never_leaves_request_pending(self):
         with mock.patch.object(ai, 'generate_advice', side_effect=RuntimeError('bug')):
             advice = services.request_advice(self.user, self.goal)

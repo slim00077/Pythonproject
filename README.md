@@ -136,7 +136,7 @@ des gabarits partagés et du CSS, et chaque membre maintient les tests de son mo
 - **MySQL/MariaDB via XAMPP** (base principale) — PostgreSQL et SQLite restent disponibles en repli
 - HTML, CSS et **JavaScript natif** sans étape de build ; graphiques SVG maison (`static/js/charts.js`) ; icônes SVG intégrées
 - Pillow (vérification des images), mysqlclient (MySQL/MariaDB), psycopg 3 (PostgreSQL), python-dotenv (fichier `.env`)
-- Suggestions d’activités écologiques générées en local par Ollama dans le module équipes
+- Suggestions d’activités et conseils de coaching d’équipe générés en local par Ollama à partir de statistiques agrégées
 - Aucun CDN n’est nécessaire : seules les polices Google Fonts sont chargées de façon facultative et non bloquante (repli sur les polices système hors ligne)
 
 ---
@@ -207,7 +207,7 @@ Installez Ollama depuis [ollama.com](https://ollama.com/), démarrez-le, puis t�
 ollama pull phi3:mini
 ```
 
-Les paramètres `ECOTEAMS_OLLAMA_URL`, `ECOTEAMS_OLLAMA_MODEL` et `ECOTEAMS_OLLAMA_TIMEOUT` sont configurables dans `.env`. Par défaut, l’application contacte Ollama sur `http://127.0.0.1:11434`. Depuis une page d’équipe, cliquez sur **Générer quatre idées**. Le nom des membres et leurs données personnelles ne sont pas envoyés au modèle. Le modèle doit rester démarré pour générer des suggestions.
+Les paramètres `ECOTEAMS_OLLAMA_URL`, `ECOTEAMS_OLLAMA_MODEL` et `ECOTEAMS_OLLAMA_TIMEOUT` sont configurables dans `.env`. Par défaut, l’application contacte Ollama sur `http://127.0.0.1:11434`. Depuis une page d’équipe, les boutons permettent de générer quatre idées d’activités ou d’obtenir un conseil du coach fondé sur des statistiques agrégées. Les noms des membres et leurs données personnelles ne sont pas envoyés au modèle. Le modèle doit rester démarré pour générer les suggestions.
 
 ### 5.4 Base de données, administrateur, données de démonstration
 

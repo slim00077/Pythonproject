@@ -244,6 +244,18 @@ ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_A
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
 
 
+# Coach IA des objectifs (goals/ai.py). La clé n'est JAMAIS dans le code : variable d'environnement
+# ANTHROPIC_API_KEY (lue par le SDK). Sans clé, la fonctionnalité affiche un message explicite.
+ECOTEAMS_AI_ENABLED = env_bool('ECOTEAMS_AI_ENABLED', default=True)
+ECOTEAMS_AI_MODEL = os.environ.get('ECOTEAMS_AI_MODEL', 'claude-opus-5-5')
+ECOTEAMS_AI_EFFORT = os.environ.get('ECOTEAMS_AI_EFFORT', 'low')
+ECOTEAMS_AI_TIMEOUT_SECONDS = float(os.environ.get('ECOTEAMS_AI_TIMEOUT_SECONDS', '45'))
+ECOTEAMS_AI_DAILY_LIMIT = int(os.environ.get('ECOTEAMS_AI_DAILY_LIMIT', '10'))
+# True : l'appel se fait dans un thread d'arrière-plan (la requête HTTP rend la main tout de suite).
+# False : appel synchrone (utilisé par les tests).
+ECOTEAMS_AI_BACKGROUND = env_bool('ECOTEAMS_AI_BACKGROUND', default=True)
+
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGGING = {

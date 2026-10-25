@@ -74,3 +74,36 @@ class Goal(models.Model):
     @property
     def days_left(self):
         return (self.deadline - timezone.localdate()).days
+
+
+class GoalAdvice(models.Model):
+    """One request to the AI goal coach, with its outcome and measured performance."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'En cours'
+        DONE = 'done', 'Terminé'
+        FAILED = 'failed', 'Échec'
+
+    goal = models.ForeignKey(Goal, on_delete=models.CASCADE, related_name='advices', verbose_name='objectif')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='goal_advices', verbose_name='utilisateur'
+    )
+    status = models.CharField('statut', max_length=10, choices=Status.choices, default=Status.PENDING)
+    content = models.TextField('conseil', blank=True)
+    error = models.CharField('message d’erreur', max_length=255, blank=True)
+    model_name = models.CharField('modèle', max_length=60, blank=True)
+    latency_ms = models.PositiveIntegerField('durée de l’appel (ms)', null=True, blank=True)
+    input_tokens = models.PositiveIntegerField('tokens en entrée', null=True, blank=True)
+    output_tokens = models.PositiveIntegerField('tokens en sortie', null=True, blank=True)
+    helpful = models.BooleanField('jugé utile', null=True, blank=True)
+    created_at = models.DateTimeField('demandé le', auto_now_add=True)
+    finished_at = models.DateTimeField('terminé le', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'conseil du coach IA'
+        verbose_name_plural = 'conseils du coach IA'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', 'created_at'])]
+
+    def __str__(self):
+        return f'Conseil #{self.pk} — {self.goal}'

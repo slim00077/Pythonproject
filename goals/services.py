@@ -1,5 +1,10 @@
 """Personal goal progress rules (member 4)."""
-from django.db import transaction
+import logging
+import threading
+from datetime import timedelta
+
+from django.conf import settings
+from django.db import close_old_connections, transaction
 from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -12,7 +17,10 @@ from gamification.models import PointTransaction
 from notifications.models import Notification
 from notifications.services import notify
 
-from .models import Goal
+from . import ai
+from .models import Goal, GoalAdvice
+
+logger = logging.getLogger('ecoteams')
 
 
 def compute_automatic_progress(goal):
@@ -123,3 +131,72 @@ def set_abandoned(user, goal, abandoned):
         value = compute_automatic_progress(goal) if goal.is_automatic else goal.current_progress
         apply_progress(goal, value)
     return goal
+
+
+# --- AI goal coach ---------------------------------------------------------
+
+def _expire_stale(user):
+    """A worker that died (server restart) must not leave a request pending forever."""
+    limit = timezone.now() - timedelta(seconds=settings.ECOTEAMS_AI_TIMEOUT_SECONDS * 3)
+    GoalAdvice.objects.filter(user=user, status=GoalAdvice.Status.PENDING, created_at__lt=limit).update(
+        status=GoalAdvice.Status.FAILED, error='La demande a expiré. Réessayez.', finished_at=timezone.now(),
+    )
+
+
+def request_advice(user, goal):
+    """Create a coach request and start it. Returns the (pending or finished) ``GoalAdvice``."""
+    if goal.user_id != user.pk:
+        raise BusinessRuleError('Vous ne pouvez demander un conseil que pour vos propres objectifs.')
+    if goal.status == Goal.Status.ABANDONED:
+        raise BusinessRuleError('Réactivez cet objectif avant de demander un conseil.')
+    _expire_stale(user)
+    if GoalAdvice.objects.filter(user=user, status=GoalAdvice.Status.PENDING).exists():
+        raise BusinessRuleError('Un conseil est déjà en cours de préparation. Patientez quelques secondes.')
+    since = timezone.now() - timedelta(days=1)
+    if GoalAdvice.objects.filter(user=user, created_at__gte=since).count() >= settings.ECOTEAMS_AI_DAILY_LIMIT:
+        raise BusinessRuleError(f'Limite de {settings.ECOTEAMS_AI_DAILY_LIMIT} conseils par 24 h atteinte.')
+    advice = GoalAdvice.objects.create(goal=goal, user=user)
+    if settings.ECOTEAMS_AI_BACKGROUND:
+        # The HTTP request returns at once; the browser polls the status endpoint.
+        threading.Thread(target=_run_in_thread, args=(advice.pk,), daemon=True, name=f'goal-coach-{advice.pk}').start()
+    else:
+        run_advice(advice.pk)
+        advice.refresh_from_db()
+    return advice
+
+
+def _run_in_thread(advice_pk):
+    close_old_connections()
+    try:
+        run_advice(advice_pk)
+    finally:
+        close_old_connections()
+
+
+def run_advice(advice_pk, client=None):
+    """Execute the AI call and store the outcome (success or French error message)."""
+    advice = GoalAdvice.objects.select_related('goal', 'goal__user').get(pk=advice_pk)
+    try:
+        result = ai.generate_advice(advice.goal, client=client)
+    except BusinessRuleError as error:
+        advice.status, advice.error = GoalAdvice.Status.FAILED, error.message[:255]
+    except Exception:  # never leave a request pending because of an unexpected bug
+        logger.exception('Unexpected error in goal coach request %s', advice_pk)
+        advice.status, advice.error = GoalAdvice.Status.FAILED, 'Erreur inattendue du coach IA. Réessayez plus tard.'
+    else:
+        advice.status, advice.content = GoalAdvice.Status.DONE, result.text
+        advice.model_name, advice.latency_ms = result.model[:60], result.latency_ms
+        advice.input_tokens, advice.output_tokens = result.input_tokens, result.output_tokens
+    advice.finished_at = timezone.now()
+    advice.save()
+    return advice
+
+
+def rate_advice(user, advice, helpful):
+    if advice.user_id != user.pk:
+        raise BusinessRuleError('Vous ne pouvez évaluer que vos propres conseils.')
+    if advice.status != GoalAdvice.Status.DONE:
+        raise BusinessRuleError('Ce conseil n’est pas encore disponible.')
+    advice.helpful = helpful
+    advice.save(update_fields=['helpful'])
+    return advice

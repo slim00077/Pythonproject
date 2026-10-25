@@ -1,14 +1,17 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from core.exceptions import BusinessRuleError
 
 from . import services
 from .forms import GoalForm, ProgressForm
-from .models import Goal
+from .models import Goal, GoalAdvice
 
 
 def _own_goal(request, pk):
@@ -44,6 +47,7 @@ def goal_detail(request, pk):
     goal = _own_goal(request, pk)
     return render(request, 'goals/goal_detail.html', {
         'goal': goal, 'progress_form': ProgressForm(initial={'value': goal.current_progress}),
+        'advice': goal.advices.first(), 'ai_enabled': settings.ECOTEAMS_AI_ENABLED,
     })
 
 
@@ -104,3 +108,43 @@ def goal_toggle(request, pk):
     else:
         messages.success(request, 'Objectif mis en pause.' if abandon else 'Objectif réactivé.')
     return redirect(goal)
+
+
+def _advice_payload(advice):
+    return {
+        'id': advice.pk, 'status': advice.status, 'content': advice.content, 'error': advice.error,
+        'helpful': advice.helpful, 'latency_ms': advice.latency_ms,
+        'rate_url': reverse('goals:advice_rate', args=[advice.goal_id, advice.pk]),
+        'status_url': reverse('goals:advice_status', args=[advice.goal_id, advice.pk]),
+    }
+
+
+@login_required
+@require_POST
+def advice_request(request, pk):
+    goal = _own_goal(request, pk)
+    try:
+        advice = services.request_advice(request.user, goal)
+    except BusinessRuleError as error:
+        return JsonResponse({'status': 'refused', 'error': error.message}, status=429 if 'Limite' in error.message else 409)
+    return JsonResponse(_advice_payload(advice), status=202 if advice.status == GoalAdvice.Status.PENDING else 200)
+
+
+@login_required
+def advice_status(request, pk, advice_pk):
+    advice = get_object_or_404(GoalAdvice, pk=advice_pk, goal_id=pk, user=request.user)
+    return JsonResponse(_advice_payload(advice))
+
+
+@login_required
+@require_POST
+def advice_rate(request, pk, advice_pk):
+    advice = get_object_or_404(GoalAdvice, pk=advice_pk, goal_id=pk, user=request.user)
+    value = request.POST.get('helpful')
+    if value not in ('1', '0'):
+        return JsonResponse({'error': 'Valeur invalide.'}, status=400)
+    try:
+        services.rate_advice(request.user, advice, value == '1')
+    except BusinessRuleError as error:
+        return JsonResponse({'error': error.message}, status=409)
+    return JsonResponse(_advice_payload(advice))

@@ -108,15 +108,18 @@ def make_client():
     return anthropic.Anthropic(timeout=settings.ECOTEAMS_AI_TIMEOUT_SECONDS, max_retries=1)
 
 
-def _call_anthropic(client, prompt):
+def _call_anthropic(client, system, prompt, schema, max_tokens):
     import anthropic
 
+    output_config = {'effort': settings.ECOTEAMS_AI_EFFORT}
+    if schema:
+        output_config['format'] = {'type': 'json_schema', 'schema': schema}
     try:
         response = client.messages.create(
             model=settings.ECOTEAMS_AI_MODEL,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            system=SYSTEM_PROMPT,
-            output_config={'effort': settings.ECOTEAMS_AI_EFFORT},
+            max_tokens=max_tokens,
+            system=system,
+            output_config=output_config,
             messages=[{'role': 'user', 'content': prompt}],
         )
     except TypeError as error:
@@ -143,16 +146,15 @@ def _call_anthropic(client, prompt):
     return text, response.model, response.usage.input_tokens, response.usage.output_tokens
 
 
-def _call_gemini(client, prompt):
+def _call_gemini(client, system, prompt, schema, max_tokens):
     from google.genai import errors, types
 
+    config = {'system_instruction': system, 'max_output_tokens': max_tokens, 'temperature': 0.7}
+    if schema:
+        config.update(response_mime_type='application/json', response_json_schema=schema)
     try:
         response = client.models.generate_content(
-            model=settings.ECOTEAMS_AI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT, max_output_tokens=MAX_OUTPUT_TOKENS, temperature=0.7,
-            ),
+            model=settings.ECOTEAMS_AI_MODEL, contents=prompt, config=types.GenerateContentConfig(**config),
         )
     except errors.ClientError as error:
         text = f'{getattr(error, "status", "")} {getattr(error, "message", "")}'.lower()
@@ -179,8 +181,12 @@ def _call_gemini(client, prompt):
             getattr(usage, 'prompt_token_count', 0) or 0, getattr(usage, 'candidates_token_count', 0) or 0)
 
 
-def generate_advice(goal, client=None):
-    """Call the configured LLM for ``goal``. Raises ``BusinessRuleError`` (French message) on any failure."""
+def complete(system, prompt, schema=None, client=None, max_tokens=MAX_OUTPUT_TOKENS):
+    """One LLM round trip on the configured provider. Raises ``BusinessRuleError`` (French message) on failure.
+
+    With ``schema`` (a JSON Schema dict) the provider is asked for JSON that follows it; callers must still
+    validate the result, an LLM output is never trusted.
+    """
     if not settings.ECOTEAMS_AI_ENABLED:
         raise BusinessRuleError('Le coach IA est désactivé sur ce serveur.')
     try:
@@ -191,8 +197,13 @@ def generate_advice(goal, client=None):
 
     call = _call_gemini if settings.ECOTEAMS_AI_PROVIDER == 'gemini' else _call_anthropic
     started = time.monotonic()
-    text, model, input_tokens, output_tokens = call(client, build_prompt(goal))
+    text, model, input_tokens, output_tokens = call(client, system, prompt, schema, max_tokens)
     latency_ms = round((time.monotonic() - started) * 1000)
     if not text:
         raise BusinessRuleError('Le coach IA n’a renvoyé aucun conseil. Réessayez.')
     return Advice(text=text, model=model, latency_ms=latency_ms, input_tokens=input_tokens, output_tokens=output_tokens)
+
+
+def generate_advice(goal, client=None):
+    """Personal advice for one goal (see ``SYSTEM_PROMPT``)."""
+    return complete(SYSTEM_PROMPT, build_prompt(goal), client=client)

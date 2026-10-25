@@ -575,6 +575,39 @@ conseil, d’où l’avis « utile / pas utile » collecté auprès des utilisat
 des pics de demande : l’appel est retenté 3 fois, puis un message clair est affiché. Rapport détaillé :
 `reports/coach_eval.json`.
 
+### 14.1 bis Studio d’objectifs IA (`/goals/studio/`)
+
+Fonction phare du module : l’utilisateur décrit son ambition **avec ses mots** (« je veux arrêter de gaspiller la
+nourriture ») ; l’IA lit son **historique réel** (actions validées par catégorie sur 30 jours, série, points, objectifs
+déjà actifs) et propose **3 objectifs SMART de difficulté croissante** (facile / moyen / ambitieux), chacun avec la
+justification chiffrée, un premier pas concret, une catégorie, un mode de suivi, une cible et une échéance. Un clic sur
+**« Créer cet objectif »** crée l’objectif réel (suivi automatique si l’app peut mesurer le geste).
+
+| Élément | Choix |
+|---|---|
+| Sortie structurée | Le modèle doit répondre en **JSON conforme à un schéma** (`goals/studio.py`, `SCHEMA`) : énumérations pour la catégorie, le mode de suivi et la difficulté. |
+| « Ne jamais faire confiance au LLM » | Chaque proposition est validée par le **même `GoalForm`** que celui d’un humain (bornes, dates, cohérence). Seules les propositions valides sont affichées ; la proportion de propositions valides est une métrique. Échéance bornée à 7–90 jours, unité forcée selon le mode. |
+| Sécurité | Texte de l’utilisateur encadré par `<ambition>` et déclaré comme donnée (injection de prompt) ; réponse de l’IA insérée dans la page uniquement avec `textContent` (jamais de HTML → pas de XSS) ; aucune donnée personnelle envoyée ; 10 générations / 24 h ; propositions privées (un tiers ne peut pas en créer). |
+| Traçabilité | Table `GoalProposalRun` (ambition, propositions, créées, latence, tokens, modèle) consultable dans `/django-admin/` : on mesure aussi le **taux d’acceptation**. |
+| UX | Exemples cliquables, compteur de caractères, animation de chargement (squelettes), zone `aria-live`, panneau « Ce que l’IA sait de vous » (transparence), lien vers l’objectif créé. |
+
+Évaluation : `python manage.py evaluate_goal_studio --output reports/studio_eval.json` (8 ambitions types, rien n’est
+écrit en base). Résultats obtenus avec `gemini-flash-lite-latest` :
+
+| Mesure | Valeur |
+|---|---|
+| Réponses obtenues / échecs API | 8 / 0 |
+| Propositions valides pour le formulaire | **24 / 24 (100 %)** |
+| Latence moyenne / médiane / p95 | 1 772 ms / 1 696 ms / 2 242 ms |
+| Tokens moyens (entrée / sortie) | 586 / 344 |
+| 3 propositions, difficulté facile→ambitieux, titres distincts, cibles croissantes, premier pas renseigné | 100 % |
+| Suivi automatique privilégié | 62 % |
+
+Lecture du dernier critère : il n’atteint pas 100 % **à juste titre**. Pour « moins gaspiller », « moins d’eau sous la
+douche » ou « moins de vêtements neufs », l’application ne peut pas mesurer le geste : l’IA choisit alors un suivi
+manuel. Le critère mesure donc une préférence, pas une erreur. Limite : la grille vérifie la forme et la cohérence, pas
+l’intérêt réel des objectifs — d’où le taux d’acceptation (`GoalProposalRun.accepted`) à présenter après usage.
+
 ### 14.2 Tests et couverture (modules `goals` et `gamification`)
 
 ```powershell

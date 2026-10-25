@@ -106,7 +106,8 @@ class AccessibilityTests(TestCase):
     def test_participant_pages(self):
         self.client.force_login(self.user)
         urls = [reverse('goals:list'), reverse('goals:create'), self.goal.get_absolute_url(),
-                reverse('goals:update', args=[self.goal.pk]), reverse('gamification:achievements')]
+                reverse('goals:update', args=[self.goal.pk]), reverse('gamification:achievements'),
+                reverse('goals:studio')]
         for url in urls:
             with self.subTest(url=url):
                 audit(self, self.client.get(url))

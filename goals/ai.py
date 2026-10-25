@@ -98,7 +98,10 @@ def make_client():
 
         return genai.Client(
             api_key=settings.GEMINI_API_KEY or None,
-            http_options=types.HttpOptions(timeout=int(settings.ECOTEAMS_AI_TIMEOUT_SECONDS * 1000)),
+            http_options=types.HttpOptions(
+                timeout=int(settings.ECOTEAMS_AI_TIMEOUT_SECONDS * 1000),
+                retry_options=types.HttpRetryOptions(attempts=3),  # Google answers 503 during demand spikes
+            ),
         )
     import anthropic
 
@@ -162,7 +165,7 @@ def _call_gemini(client, prompt):
         raise BusinessRuleError(SERVICE_ERROR)
     except errors.APIError as error:
         logger.error('AI request failed (%s): %s', error.code, getattr(error, 'message', error))
-        raise BusinessRuleError(SERVICE_ERROR)
+        raise BusinessRuleError(RATE_LIMITED if error.code == 503 else SERVICE_ERROR)
     except Exception as error:  # network-level failures come from the HTTP library, not from the SDK
         kind = type(error).__name__.lower()
         if 'timeout' in kind:

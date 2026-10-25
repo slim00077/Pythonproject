@@ -544,7 +544,7 @@ conseil personnalisé : évaluation honnête de l’avancement, puis 2 ou 3 acti
 | Expérience utilisateur | Indicateur « Le coach analyse vos progrès… » (zone `aria-live`), bouton désactivé pendant l’appel, message d’erreur explicite (clé manquante/refusée, quota, délai dépassé, réseau, service indisponible), notation « utile / pas utile ». |
 | Garde-fous | 1 demande en cours par utilisateur, 10 par 24 h (`ECOTEAMS_AI_DAILY_LIMIT`), délai maximal 45 s, objectifs privés (404 pour un tiers), `ECOTEAMS_AI_ENABLED=False` pour couper la fonction. |
 
-Configuration : voir la fin de `.env.example`. Modèle par défaut `gemini-flash-latest` (Gemini) ou `claude-opus-5-5` avec
+Configuration : voir la fin de `.env.example`. Modèle par défaut `gemini-flash-lite-latest` (Gemini) ou `claude-opus-5-5` avec
 effort `low` (Claude) ; `ECOTEAMS_AI_MODEL` permet d’en choisir un autre.
 
 #### Métriques d’évaluation
@@ -562,11 +562,18 @@ de points. Le cas d’usage est génératif : la pertinence est donc évaluée *
 « utile / pas utile » des utilisateurs), pas par précision/rappel. Les chiffres obtenus sur votre machine sont à
 reporter ici avant la soutenance :
 
-| Mesure (10 objectifs) | Valeur |
+| Mesure (10 objectifs de démonstration, `gemini-flash-lite-latest`) | Valeur |
 |---|---|
-| Latence médiane / p95 | _à compléter après `evaluate_goal_coach`_ |
-| Tokens moyens (entrée / sortie) | _à compléter_ |
-| Critères réussis | _à compléter_ |
+| Réponses obtenues / échecs API | 10 / 0 |
+| Latence moyenne / médiane / p95 | 1 307 ms / 1 262 ms / 1 499 ms |
+| Tokens moyens (entrée / sortie) | 361 / 159 |
+| Critères réussis (non vide, ≤ 130 mots, français, cite la progression, ≥ 2 actions, aucune promesse) | 100 % sur les 6 critères |
+
+Lecture : le coach répond en ~1,3 s, nettement sous les 45 s de délai maximal, et sans bloquer la requête HTTP grâce à
+l’exécution en arrière-plan. Limite de la grille : elle vérifie la forme et l’ancrage dans les données, pas la finesse du
+conseil, d’où l’avis « utile / pas utile » collecté auprès des utilisateurs. Un modèle Gemini peut répondre 503 lors
+des pics de demande : l’appel est retenté 3 fois, puis un message clair est affiché. Rapport détaillé :
+`reports/coach_eval.json`.
 
 ### 14.2 Tests et couverture (modules `goals` et `gamification`)
 

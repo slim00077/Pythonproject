@@ -253,7 +253,7 @@ ECOTEAMS_AI_PROVIDER = os.environ.get('ECOTEAMS_AI_PROVIDER', '').strip().lower(
     'gemini' if GEMINI_API_KEY else 'anthropic'
 )
 ECOTEAMS_AI_MODEL = os.environ.get('ECOTEAMS_AI_MODEL', '') or (
-    'gemini-flash-latest' if ECOTEAMS_AI_PROVIDER == 'gemini' else 'claude-opus-5-5'
+    'gemini-flash-lite-latest' if ECOTEAMS_AI_PROVIDER == 'gemini' else 'claude-opus-5-5'
 )
 ECOTEAMS_AI_EFFORT = os.environ.get('ECOTEAMS_AI_EFFORT', 'low')  # Anthropic uniquement
 ECOTEAMS_AI_TIMEOUT_SECONDS = float(os.environ.get('ECOTEAMS_AI_TIMEOUT_SECONDS', '45'))

@@ -1,4 +1,5 @@
 """AI goal coach tests. The Claude API is always replaced by a fake client: no network in tests."""
+import os
 from datetime import timedelta
 from io import StringIO
 from types import SimpleNamespace
@@ -281,7 +282,8 @@ class GeminiCoachTests(TestCase):
             (gemini_error('ClientError', 403), 'clé API refusée'),
             (gemini_error('ClientError', 429), 'sollicité'),
             (gemini_error('ClientError', 404), 'erreur'),
-            (gemini_error('ServerError', 503), 'erreur'),
+            (gemini_error('ServerError', 503), 'sollicité'),
+            (gemini_error('ServerError', 500), 'erreur'),
             (httpx.ReadTimeout('slow'), 'trop de temps'),
             (httpx.ConnectError('down'), 'joindre'),
         ]
@@ -296,7 +298,9 @@ class GeminiCoachTests(TestCase):
         self.assertIn('aucun conseil', self.run_with(FakeGemini(text=None)).error)
 
     def test_missing_key_gives_explicit_message(self):
-        with override_settings(GEMINI_API_KEY=''):
+        with override_settings(GEMINI_API_KEY=''), mock.patch.dict('os.environ'):
+            for name in ('GEMINI_API_KEY', 'GOOGLE_API_KEY'):  # the developer's real key must not leak into tests
+                os.environ.pop(name, None)
             advice = services.request_advice(self.user, self.goal)  # real client construction, no key
         self.assertEqual(advice.status, GoalAdvice.Status.FAILED)
         self.assertIn('clé API manquante', advice.error)

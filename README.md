@@ -136,6 +136,7 @@ des gabarits partagés et du CSS, et chaque membre maintient les tests de son mo
 - **MySQL/MariaDB via XAMPP** (base principale) — PostgreSQL et SQLite restent disponibles en repli
 - HTML, CSS et **JavaScript natif** sans étape de build ; graphiques SVG maison (`static/js/charts.js`) ; icônes SVG intégrées
 - Pillow (vérification des images), mysqlclient (MySQL/MariaDB), psycopg 3 (PostgreSQL), python-dotenv (fichier `.env`)
+- Suggestions d’activités écologiques générées en local par Ollama dans le module équipes
 - Aucun CDN n’est nécessaire : seules les polices Google Fonts sont chargées de façon facultative et non bloquante (repli sur les polices système hors ligne)
 
 ---
@@ -198,7 +199,17 @@ python -c "from django.core.management.utils import get_random_secret_key as g; 
 - **Avec PostgreSQL** : mettez `DB_ENGINE=postgresql` et complétez les variables `POSTGRES_*`.
 - **Premier essai sans service de base de données** : mettez `DB_ENGINE=sqlite`. Un fichier `db.sqlite3` sera créé. Sans fichier `.env`, l’application utilise SQLite et une clé de développement (uniquement en mode `DJANGO_DEBUG=True`).
 
-### 5.3 Base de données, administrateur, données de démonstration
+### 5.3 IA locale pour les équipes (Ollama)
+
+Installez Ollama depuis [ollama.com](https://ollama.com/), démarrez-le, puis téléchargez le modèle local par défaut (si nécessaire) :
+
+```powershell
+ollama pull phi3:mini
+```
+
+Les paramètres `ECOTEAMS_OLLAMA_URL`, `ECOTEAMS_OLLAMA_MODEL` et `ECOTEAMS_OLLAMA_TIMEOUT` sont configurables dans `.env`. Par défaut, l’application contacte Ollama sur `http://127.0.0.1:11434`. Depuis une page d’équipe, cliquez sur **Générer quatre idées**. Le nom des membres et leurs données personnelles ne sont pas envoyés au modèle. Le modèle doit rester démarré pour générer des suggestions.
+
+### 5.4 Base de données, administrateur, données de démonstration
 
 ```powershell
 python manage.py migrate

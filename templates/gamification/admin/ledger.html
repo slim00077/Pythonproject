@@ -15,7 +15,7 @@
   <div class="card stat"><span class="stat-icon gold">{% icon 'refresh' 22 %}</span><div><div class="stat-label">Points retirés (corrections)</div><div class="stat-value">{{ totals.removed|intcomma }}</div></div></div>
   <div class="card stat"><span class="stat-icon cyan">{% icon 'list' 22 %}</span><div><div class="stat-label">Écritures</div><div class="stat-value">{{ page.paginator.count }}</div></div></div>
 </div>
-<form class="filters" method="get" data-autosubmit>
+<form class="filters" method="get" data-autosubmit role="search" aria-label="Filtrer le registre">
   <div class="field"><label class="field-label" for="lq">Rechercher</label><input class="input" id="lq" type="search" name="q" value="{{ query }}" placeholder="Utilisateur, équipe, description…"></div>
   <div class="field"><label class="field-label" for="lr">Motif</label>
     <select class="input" id="lr" name="reason"><option value="">Tous</option>{% for value, label in reasons %}<option value="{{ value }}" {% if reason == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
@@ -23,7 +23,8 @@
 </form>
 <div class="table-wrap">
   <table class="table">
-    <thead><tr><th>Date</th><th>Utilisateur</th><th>Équipe</th><th>Motif</th><th>Description</th><th>Référence</th><th class="num">Points</th></tr></thead>
+    <caption class="sr-only">Registre des points, du plus récent au plus ancien</caption>
+    <thead><tr><th scope="col">Date</th><th scope="col">Utilisateur</th><th scope="col">Équipe</th><th scope="col">Motif</th><th scope="col">Description</th><th scope="col">Référence</th><th scope="col" class="num">Points</th></tr></thead>
     <tbody>
       {% for entry in page %}
         <tr>

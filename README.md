@@ -524,3 +524,86 @@ décrivez le changement, demandez la relecture d’au moins un autre membre, vé
 
 - **IA (version future)** : les services métier existants offrent des points d’accroche naturels (recommandation d’équipe à partir des profils, génération de brouillons de défis soumis à validation, aide à la déclaration, coach personnel, analyse d’impact d’équipe). Toute fonctionnalité d’IA devra rester consultative : elle ne pourra ni publier, ni valider, ni attribuer de points sans passer par les services et permissions existants.
 - Notifications par e-mail, export PDF des rapports, plusieurs équipes par participant, API REST.
+
+---
+
+## 14. Module 4 — Objectifs et gamification : Coach IA, tests, accessibilité
+
+### 14.1 Coach IA des objectifs
+
+Sur la page d’un objectif (`/goals/<id>/`), le bouton **« Obtenir un conseil »** demande à Claude (API Anthropic) un
+conseil personnalisé : évaluation honnête de l’avancement, puis 2 ou 3 actions concrètes avant l’échéance.
+
+| Élément | Choix |
+|---|---|
+| Cas d’usage | Aider à tenir un objectif personnel à partir des **chiffres réels** de la base (progression, jours restants, actions validées sur 14 jours, série, points). Consultatif : ne modifie jamais objectifs, points ou badges. |
+| Appel technique | `goals/ai.py` (prompt + appel SDK officiel `anthropic`), `goals/services.py` (file de demandes), vues JSON dans `goals/views.py`. |
+| Clé API | Variable d’environnement `ANTHROPIC_API_KEY` (fichier `.env`, ignoré par Git). Jamais dans le code. |
+| Données envoyées | Chiffres de l’objectif uniquement : **ni nom, ni e-mail, ni identifiant**. Les textes libres (titre, description) sont encadrés par des balises et déclarés comme données, pas comme instructions (défense contre l’injection de prompt). |
+| Asynchronisme | La requête HTTP crée une ligne `GoalAdvice` (statut *pending*) et lance un **thread d’arrière-plan** ; le navigateur interroge `/goals/<id>/advice/<n>/` toutes les 1,5 s (`static/js/goal_coach.js`). Aucun blocage du serveur. Une demande « perdue » (redémarrage) expire seule. En production, remplacer le thread par Celery/Redis ne change que `request_advice`. |
+| Expérience utilisateur | Indicateur « Le coach analyse vos progrès… » (zone `aria-live`), bouton désactivé pendant l’appel, message d’erreur explicite (clé manquante/refusée, quota, délai dépassé, réseau, service indisponible), notation « utile / pas utile ». |
+| Garde-fous | 1 demande en cours par utilisateur, 10 par 24 h (`ECOTEAMS_AI_DAILY_LIMIT`), délai maximal 45 s, objectifs privés (404 pour un tiers), `ECOTEAMS_AI_ENABLED=False` pour couper la fonction. |
+
+Configuration : voir la fin de `.env.example`. Modèle par défaut `claude-opus-5-5` avec effort `low` (`ECOTEAMS_AI_MODEL`
+et `ECOTEAMS_AI_EFFORT` permettent de choisir un modèle plus rapide ou moins coûteux).
+
+#### Métriques d’évaluation
+
+Chaque appel enregistre **latence (ms), tokens en entrée/sortie, modèle** et l’avis de l’utilisateur (`GoalAdvice`,
+visible dans `/django-admin/`). La commande suivante évalue le coach sur des objectifs réels (après `seed_demo_data`) :
+
+```powershell
+python manage.py evaluate_goal_coach --limit 10 --output reports/coach_eval.json
+```
+
+Elle affiche la latence (moyenne, médiane, p95, max), les tokens moyens et un **taux de réussite par critère** d’une
+grille objective : réponse non vide, ≤ 130 mots, en français, cite la progression, au moins 2 actions, aucune promesse
+de points. Le cas d’usage est génératif : la pertinence est donc évaluée **qualitativement** (grille ci-dessus + avis
+« utile / pas utile » des utilisateurs), pas par précision/rappel. Les chiffres obtenus sur votre machine sont à
+reporter ici avant la soutenance :
+
+| Mesure (10 objectifs) | Valeur |
+|---|---|
+| Latence médiane / p95 | _à compléter après `evaluate_goal_coach`_ |
+| Tokens moyens (entrée / sortie) | _à compléter_ |
+| Critères réussis | _à compléter_ |
+
+### 14.2 Tests et couverture (modules `goals` et `gamification`)
+
+```powershell
+python manage.py test goals gamification
+coverage run --source=goals,gamification manage.py test goals gamification
+coverage report --omit="*/migrations/*,*/tests.py,*/test_*.py"
+coverage html          # rapport détaillé dans htmlcov/index.html
+```
+
+- **Tests unitaires** : contraintes de base de données, validations de formulaire, propriétés du modèle, registre de
+  points immuable, références uniques, règles des badges, séries, limites des corrections (`goals/test_models.py`,
+  `gamification/tests.py`).
+- **Tests d’intégration** : codes HTTP, contenu des réponses, JSON du coach, filtres/pagination du registre
+  (`goals/tests.py`, `goals/test_coach.py`, `gamification/test_views.py`).
+- **Permissions testées explicitement** : anonyme → redirection vers la connexion, utilisateur simple → 403 sur toutes
+  les URL du back-office, permission « badges » ≠ permission « points », IDOR (404) sur objectifs et conseils d’autrui.
+- **L’API Claude n’est jamais appelée dans les tests** (client factice) : tests rapides, gratuits, déterministes.
+- Couverture des deux applications : **97 %** (hors migrations et fichiers de tests).
+
+### 14.3 Accessibilité (WCAG 2.1 AA)
+
+- Gabarits : `lang="fr"`, lien d’évitement, `<main id="main" tabindex="-1">`, `<nav>` nommées, un seul `<h1>` et pas
+  de saut de niveau de titre, tableaux avec `<caption>` et `<th scope="col">`.
+- Formulaires : chaque champ a un `<label>`, `aria-required`, `aria-describedby` (aide + erreurs), `aria-invalid`
+  après une erreur (`core/forms.py`).
+- ARIA : barres de progression (`role="progressbar"` + valeurs), anneaux (`role="img"` + texte), badges verrouillés
+  annoncés, boutons-icônes nommés, résultat du coach dans une zone `aria-live="polite"`.
+- Contraste : toute la palette dépasse **4,5:1** sur les fonds (minimum mesuré 5,28:1 — bleu sur fond clair) ;
+  focus visible (`:focus-visible`), `prefers-reduced-motion` respecté.
+- Contrôle automatisé : `goals/test_accessibility.py`. **Audit à faire dans le navigateur** (Chrome → F12 → Lighthouse →
+  Accessibilité, ou extension axe DevTools) sur `/goals/`, `/goals/<id>/`, `/achievements/`, `/admin/badges/` et
+  `/admin/points/`, puis joindre les captures d’écran.
+
+### 14.4 Sécurité et robustesse (rappel pour la soutenance)
+
+CSRF actif sur tous les formulaires (le JS du coach envoie `X-CSRFToken`) ; ORM uniquement (aucun SQL brut) ; mots de
+passe hachés ; secrets dans `.env` ; `DEBUG=False` accepté (`python manage.py check --deploy` ne signale que HSTS et la
+redirection HTTPS, à régler selon l’hébergement) ; pages 403/404/500 personnalisées ; erreurs de l’API IA converties
+en messages clairs, jamais de trace affichée ; contrôle d’accès par groupes/permissions Django (`any_permission_required`).

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <nav class="breadcrumb"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {{ goal.title }}</nav>
+    <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {{ goal.title }}</nav>
     <h1>{{ goal.title }}</h1>
     <div class="row">
       <span class="pill tone-{% if goal.is_overdue %}warning{% else %}{{ goal.status|status_tone }}{% endif %}">{% if goal.is_overdue %}En retard{% else %}{{ goal.get_status_display }}{% endif %}</span>
@@ -13,8 +13,8 @@
     </div>
   </div>
   <div class="page-actions">
-    <a class="btn btn-secondary" href="{% url 'goals:update' goal.pk %}">{% icon 'edit' 18 %} Modifier</a>
-    <a class="btn btn-danger" href="{% url 'goals:delete' goal.pk %}">{% icon 'trash' 18 %} Supprimer</a>
+    <a class="btn btn-secondary" href="{% url 'goals:update' goal.pk %}">{% icon 'edit' 18 %} Modifier<span class="sr-only"> l’objectif {{ goal.title }}</span></a>
+    <a class="btn btn-danger" href="{% url 'goals:delete' goal.pk %}">{% icon 'trash' 18 %} Supprimer<span class="sr-only"> l’objectif {{ goal.title }}</span></a>
   </div>
 </div>
 <div class="split">
@@ -32,15 +32,15 @@
   </div>
   <aside class="card card-glass">
     {% if goal.status == 'abandoned' %}
-      <h3>{% icon 'clock' 18 %} Objectif en pause</h3>
+      <h2 class="h3">{% icon 'clock' 18 %} Objectif en pause</h2>
       <p class="text-2 small">Réactivez-le pour reprendre le suivi.</p>
       <form method="post" action="{% url 'goals:toggle' goal.pk %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit">{% icon 'refresh' 18 %} Réactiver</button></form>
     {% elif goal.is_automatic %}
-      <h3>{% icon 'refresh' 18 %} Suivi automatique</h3>
+      <h2 class="h3">{% icon 'refresh' 18 %} Suivi automatique</h2>
       <p class="text-2 small">La progression est calculée à partir de vos {% if goal.tracking_mode == 'points' %}points inscrits au registre{% else %}actions validées par la modération{% endif %}{% if goal.category %} dans la catégorie « {{ goal.get_category_display }} »{% endif %}, entre le {{ goal.start_date|date:'d/m' }} et le {{ goal.deadline|date:'d/m/Y' }}. Elle ne peut pas être modifiée à la main.</p>
       <a class="btn btn-primary btn-block" href="{% url 'actions:create' %}">{% icon 'plus' 18 %} Déclarer une action</a>
     {% else %}
-      <h3>{% icon 'edit' 18 %} Mettre à jour ma progression</h3>
+      <h2 class="h3">{% icon 'edit' 18 %} Mettre à jour ma progression</h2>
       <form method="post" action="{% url 'goals:progress' goal.pk %}" novalidate>
         {% csrf_token %}
         {% include 'partials/form_fields.html' with form=progress_form %}

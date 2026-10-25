@@ -107,4 +107,7 @@
 
   if (root.getAttribute('data-status-url')) {
     setBusy(true);
-    show(message('Le coach analyse vos progrès…', 'info'
+    show(message('Le coach analyse vos progrès…', 'info'));
+    poll(root.getAttribute('data-status-url'), 0);
+  }
+})();

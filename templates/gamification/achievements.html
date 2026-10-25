@@ -23,13 +23,13 @@
       <div class="medal-grid">
         {% for row in rows %}
           <div class="card medal-card {% if not row.award %}locked{% endif %}">
-            <div class="medal {{ row.badge.tone }}"><span>{% if row.award %}{% icon row.badge.icon 30 %}{% else %}{% icon 'lock' 26 %}{% endif %}</span></div>
-            <h3 class="mb-1">{{ row.badge.name }}</h3>
+            <div class="medal {{ row.badge.tone }}" aria-hidden="true"><span>{% if row.award %}{% icon row.badge.icon 30 %}{% else %}{% icon 'lock' 26 %}{% endif %}</span></div>
+            <h3 class="mb-1">{{ row.badge.name }}{% if not row.award %}<span class="sr-only"> (verrouillé)</span>{% endif %}</h3>
             <p class="small text-2">{{ row.badge.description }}</p>
             {% if row.award %}
               <span class="pill tone-success">{% icon 'check' 12 %} Obtenu le {{ row.award.awarded_at|date:'d/m/Y' }}</span>
             {% else %}
-              <div class="progress"><div class="progress-bar" style="width:0" data-width="{{ row.progress }}"></div></div>
+              <div class="progress" role="progressbar" aria-label="Progression vers le badge {{ row.badge.name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.progress }}"><div class="progress-bar" style="width:0" data-width="{{ row.progress }}"></div></div>
               <div class="progress-meta"><span>{{ row.badge.get_rule_display|truncatechars:34 }}</span><span>{{ row.label }}</span></div>
             {% endif %}
           </div>
@@ -40,8 +40,8 @@
     {% endif %}
   </div>
   <aside class="card">
-    <div class="card-head"><h3>{% icon 'pie-chart' %} Origine de mes points</h3></div>
-    <ul class="list">
+    <div class="card-head"><h2 class="h3">{% icon 'pie-chart' %} Origine de mes points</h2></div>
+    <ul class="list" aria-label="Points par origine">
       {% for label, total in by_reason %}
         <li class="list-item"><span class="grow">{{ label }}</span><strong class="{% if total < 0 %}text-danger{% else %}text-lime{% endif %}">{{ total|signed }}</strong></li>
       {% endfor %}

@@ -49,6 +49,10 @@ class Challenge(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_challenges',
         verbose_name='créateur',
     )
+    organization = models.ForeignKey(
+        'organizations.Organization', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='challenges', verbose_name='organisation à l’origine du défi',
+    )
     status = models.CharField('statut', max_length=20, choices=Status.choices, default=Status.DRAFT)
     review_notes = models.TextField('commentaire de validation', max_length=1000, blank=True)
     reviewed_by = models.ForeignKey(

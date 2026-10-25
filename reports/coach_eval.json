@@ -1,0 +1,186 @@
+{
+  "summary": {
+    "objectifs_evalues": 10,
+    "reponses_obtenues": 10,
+    "echecs_api": 0,
+    "latence_ms": {
+      "moyenne": 1307,
+      "mediane": 1262,
+      "p95": 1499,
+      "max": 1499
+    },
+    "tokens_entree_moyens": 361,
+    "tokens_sortie_moyens": 159,
+    "taux_de_reussite_par_critere": {
+      "non_vide": 100,
+      "longueur_max_130_mots": 100,
+      "en_francais": 100,
+      "cite_la_progression": 100,
+      "au_moins_2_actions": 100,
+      "sans_promesse_de_points": 100
+    }
+  },
+  "details": [
+    {
+      "goal": 1,
+      "title": "15 trajets à vélo ce mois-ci",
+      "latency_ms": 1215,
+      "input_tokens": 363,
+      "output_tokens": 135,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "C'est une situation dans les temps : tu as validé 10 actions sur 15 (67 %), ce qui correspond exactement aux 67 % du temps écoulé, avec une belle série de 8 jours et 220 points au compteur ! Il te reste 10 jours pour boucler tes 15 trajets à vélo.\n\nVoici 2 actions précises et réalistes pour y arriver :\n* Préparer tes affaires et ton vélo dès ce soir pour tes trajets de demain.\n* Planifier dès maintenant 5 petits déplacements de proximité à faire à vélo d'ici la fin de l'échéance."
+    },
+    {
+      "goal": 2,
+      "title": "Atteindre 200 points",
+      "latency_ms": 1218,
+      "input_tokens": 366,
+      "output_tokens": 153,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Bravo, tu es largement en avance : avec 220 points validés sur les 200 demandés, ton objectif est déjà atteint alors qu'il reste encore 20 jours (soit 56 % du temps écoulé) et une belle série en cours de 8 jours ! \n\nPour continuer sur cette belle lancée et consolider tes 10 actions validées ces deux dernières semaines, voici ce que tu peux faire d'ici la fin :\n* Continuer à enregistrer tes écogestes quotidiens automatiques pour faire grimper ta série.\n* Maintenir tes bonnes habitudes de transport ou de consommation.\n* Partager ton expérience avec ton équipe pour les motiver à ton tour."
+    },
+    {
+      "goal": 3,
+      "title": "Trier chaque semaine",
+      "latency_ms": 1254,
+      "input_tokens": 357,
+      "output_tokens": 176,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Bravo, tu es largement en avance : ton objectif « Trier chaque semaine » est déjà atteint avec 6 actions validées sur 6, alors qu'il te reste 10 jours (soit 33 % du temps). Avec 4 jours de série et 185 points au compteur, c’est un sans-faute ! Même si ton objectif est rempli, tu peux maintenir ta belle dynamique éco-responsable.\n\nVoici 2 ou 3 actions précises et réalistes pour continuer sur cette lancée :\n* Vérifie que tes derniers emballages recyclables sont bien propres et aplatis avant de les déposer au tri.\n* Sensibilise un proche aux bonnes pratiques du tri sélectif cette semaine.\n* Consulte le guide de tri de ta commune pour identifier un nouveau déchet à mieux valoriser."
+    },
+    {
+      "goal": 4,
+      "title": "Réduire les veilles à zéro",
+      "latency_ms": 1309,
+      "input_tokens": 358,
+      "output_tokens": 169,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "C'est une excellente situation : tu es en avance, avec déjà 7 actions validées sur 8 (88 %) pour ton objectif \"Réduire les veilles à zéro\", le tout soutenu par une belle série de 5 jours consécutifs et 142 points au total ! Il te reste 15 jours, soit la moitié du temps, pour valider la toute dernière action. \n\nPour finir en beauté avant l'échéance, voici ce que tu peux faire :\n* Débrancher ta multiprise TV/box internet ce soir avant d'aller te coucher.\n* Vérifier les chargeurs et petits appareils en veille dans la cuisine ou la chambre.\n* Valider ta dernière action dès qu'elle est réalisée pour maintenir ta belle série. \n\nContinue comme ça !"
+    },
+    {
+      "goal": 5,
+      "title": "Économiser 1 000 litres d’eau",
+      "latency_ms": 1269,
+      "input_tokens": 365,
+      "output_tokens": 146,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Ta progression est en avance ! Tu as atteint 420 litres sur 1,000 (42 %) alors que 33 % du temps s'est écoulé, et tu maintiens une belle série de 6 jours avec 7 actions validées ces deux dernières semaines. \n\nPour continuer sur cette lancée et boucler tes 20 jours restants sereinement, voici ce que tu peux faire :\n* Récupérer l'eau froide de ta douche pendant qu'elle chauffe pour arroser tes plantes.\n* Installer un mousseur économe sur ton robinet de cuisine.\n* Lancer uniquement des machines pleines et utiliser le mode Éco."
+    },
+    {
+      "goal": 6,
+      "title": "Cuisiner 5 repas anti-gaspi",
+      "latency_ms": 1195,
+      "input_tokens": 364,
+      "output_tokens": 162,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "C’est un très bon début : tu es en avance, avec 2 repas validés sur 5 (40 %) alors que seulement 17 % du temps s’est écoulé. \n\nIl te reste 25 jours pour valider les 3 derniers repas de ton objectif \"Cuisiner 5 repas anti-gaspi\". C'est tout à fait réalisable à ton rythme !\n\nVoici 2 actions précises et réalistes pour continuer sur cette lancée :\n* Planifier un menu de la semaine en vérifiant ce qui reste dans ton frigo ou tes placards pour cuisiner un premier repas anti-gaspi.\n* Cuisiner un plat en grande quantité ce week-end et congeler les restes pour valider un nouveau repas."
+    },
+    {
+      "goal": 7,
+      "title": "Prendre les transports en commun 10 fois",
+      "latency_ms": 1472,
+      "input_tokens": 359,
+      "output_tokens": 143,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "La situation est légèrement en retard : avec 40 % du temps écoulé et seulement 2 actions validées sur 10 (20 %), tu dois accélérer pour atteindre ton objectif de transports en commun dans les 18 jours restants. Tes 40 points et tes 2 actions des 14 derniers jours montrent que c'est possible, mais il faut relancer ta série.\n\nVoici ce que tu peux faire dès maintenant :\n* Préparer tes titres de transport ou recharger ta carte ce soir pour la semaine.\n* Programmer tes deux prochains trajets en transports en commun dès demain.\n* Noter tes déplacements pour ne pas oublier de valider tes actions."
+    },
+    {
+      "goal": 8,
+      "title": "Trier 5 fois ce mois-ci",
+      "latency_ms": 1499,
+      "input_tokens": 359,
+      "output_tokens": 173,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Côté progression, tu es un peu en retard : avec 2 actions validées sur 5 (40 %) et 60 % du temps écoulé, il te reste 3 actions à valider en 12 jours pour atteindre ton objectif de tri. \n\nHeureusement, tu as encore largement le temps de rattraper ton retard grâce au suivi automatique ! Pour y arriver sereinement d'ici l'échéance :\n\n* Planifie dès aujourd'hui tes prochains dépôts au point de tri pour valider une première action cette semaine.\n* Regroupe tes emballages recyclables dans un bac dédié pour ne rien oublier et fluidifier tes gestes.\n* Vérifie le calendrier de collecte de ta commune pour ne rater aucune opportunité de validation.\n\nTu vas y arriver, continue tes efforts !"
+    },
+    {
+      "goal": 9,
+      "title": "Atteindre 150 points",
+      "latency_ms": 1249,
+      "input_tokens": 361,
+      "output_tokens": 166,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Côté progression, tu as validé 24 points sur 150 (soit 16 %), alors que 57 % du temps s'est déjà écoulé : nous sommes donc en retard sur le rythme idéal. Avec 15 jours restants et 3 actions validées ces deux dernières semaines, tout est encore possible pour redresser la barre, même si ta série actuelle est à 0. \n\nVoici 2 ou 3 actions précises et réalistes à faire rapidement :\n* Planifier dès aujourd'hui 2 petits écogestes automatiques à valider dans les prochains jours.\n* Vérifier tes sources de points habituelles pour identifier les actions rapides à réaliser.\n* Te fixer un rappel quotidien pour ne pas oublier de valider tes actions en cours."
+    },
+    {
+      "goal": 10,
+      "title": "Douches courtes 8 fois",
+      "latency_ms": 1386,
+      "input_tokens": 355,
+      "output_tokens": 163,
+      "checks": {
+        "non_vide": true,
+        "longueur_max_130_mots": true,
+        "en_francais": true,
+        "cite_la_progression": true,
+        "au_moins_2_actions": true,
+        "sans_promesse_de_points": true
+      },
+      "text": "Tu es un peu en retard : tu as validé 3 actions sur 8 (38 %), alors que la moitié du temps s'est déjà écoulée (50 %), avec encore 14 jours restants. Heureusement, tu es sur une bonne dynamique avec une série de 3 jours consécutifs et 26 points au total !\n\nPour rattraper ton retard sur cet objectif lié à l'eau, voici ce tu peux faire concrètement :\n* Prendre deux douches courtes cette semaine en chronométrant ton temps.\n* Installer un mousseur hydroéconomique sur ton robinet pour valider une action automatique.\n* Vérifier s'il y a de petites fuites à réparer chez toi pour comptabiliser un nouveau geste validé."
+    }
+  ],
+  "failures": []
+}

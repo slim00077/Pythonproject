@@ -1,0 +1,160 @@
+name: CI
+
+# Intégration continue : à chaque pull request (et push sur develop/main), on vérifie le projet
+# sur SQLite ET sur PostgreSQL (la base de production), puis on construit et on teste l'image Docker.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_call:        # réutilisé par cd.yml : on ne déploie jamais du code dont les tests échouent
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgresql]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ecoteams
+          POSTGRES_USER: ecoteams
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ecoteams -d ecoteams"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_DEBUG: "True"
+      DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else
+      DB_ENGINE: ${{ matrix.db }}
+      POSTGRES_DB: ecoteams
+      POSTGRES_USER: ecoteams
+      POSTGRES_PASSWORD: ci-only-password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: pip install -r requirements-dev.txt
+
+      - name: Vérification Django (check)
+        run: python manage.py check
+
+      - name: Migrations à jour (aucune migration oubliée)
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Syntaxe JavaScript
+        run: for f in static/js/*.js; do node --check "$f"; done
+
+      - name: Tests avec couverture
+        run: |
+          coverage run --source=. --omit="*/migrations/*,*/tests.py,*/test_*.py,manage.py,config/*" manage.py test --noinput
+
+      - name: Rapport de couverture
+        run: |
+          coverage report --skip-covered | tail -n 15
+          coverage html
+          # Seuil sur le module « objectifs et gamification »
+          coverage report --include="goals/*,gamification/*" --omit="*/migrations/*,*/tests.py,*/test_*.py" --fail-under=90
+
+      - name: Publier le rapport de couverture
+        if: matrix.db == 'sqlite'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov
+          retention-days: 14
+
+  production-config:
+    name: Configuration de production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-prod.txt
+      - run: pip install -r requirements-prod.txt
+      - name: check --deploy (DEBUG=False, HTTPS, HSTS, cookies sécurisés)
+        env:
+          DJANGO_DEBUG: "False"
+          DJANGO_SECRET_KEY: ${{ github.run_id }}-ci-only-0123456789-abcdefghijklmnopqrstuvwxyz-ABCDEFGH
+          DJANGO_ALLOWED_HOSTS: example.com
+          DJANGO_BEHIND_PROXY: "True"
+          DJANGO_SECURE_SSL_REDIRECT: "True"
+          DJANGO_HSTS_SECONDS: "3600"
+          DB_ENGINE: sqlite
+        run: python manage.py check --deploy --fail-level ERROR
+      - name: Audit des dépendances connues vulnérables (informatif)
+        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r requirements-prod.txt
+
+  docker:
+    name: Image Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construire l'image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ecoteams:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Démarrer le conteneur
+        run: |
+          docker run -d --name ecoteams -p 8000:8000 \
+            -e DJANGO_SECRET_KEY=ci-only-secret-key-not-used-anywhere-else \
+            -e DJANGO_SECURE_COOKIES=False \
+            -e SEED_DEMO_DATA=1 \
+            ecoteams:ci
+
+      - name: Test de fumée (santé, page d'accueil, fichiers statiques)
+        run: |
+          for _ in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/healthz/ || true)
+            [ "$code" = "200" ] && break
+            sleep 3
+          done
+          curl -fsS http://localhost:8000/healthz/
+          curl -fsS -o /dev/null http://localhost:8000/
+          curl -fsS -o /dev/null http://localhost:8000/accounts/login/
+          curl -fsS -o /dev/null http://localhost:8000/static/css/ecoteams.css
+          curl -fsS -o /dev/null http://localhost:8000/static/js/goal_studio.js
+
+      - name: Journaux du conteneur (en cas d'échec)
+        if: failure()
+        run: docker logs ecoteams

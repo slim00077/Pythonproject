@@ -6,6 +6,8 @@ from django.contrib.auth.models import Group, Permission
 from core.forms import ImageInput, StyledFormMixin
 from core.utils import name_taken
 
+from organizations.models import Organization
+
 from .models import Role, User
 
 ROLE_PERMISSION_APPS = [
@@ -57,12 +59,16 @@ class LoginForm(StyledFormMixin, AuthenticationForm):
 
 
 class ProfileForm(StyledFormMixin, forms.ModelForm):
-    """Lets a user edit their own public information — never their privileges."""
+    """Lets a user edit their own public information.
+
+    The account category, the organization and the roles are deliberately absent:
+    only an administrator changes them.
+    """
 
     class Meta:
         model = User
         fields = (
-            'first_name', 'last_name', 'email', 'organization_type', 'organization',
+            'first_name', 'last_name', 'email', 'organization',
             'city', 'favorite_category', 'skills', 'bio', 'avatar',
         )
         widgets = {'avatar': ImageInput(), 'bio': forms.Textarea(attrs={'rows': 4})}
@@ -143,6 +149,18 @@ class RoleMembersForm(forms.Form):
 class UserAccessForm(StyledFormMixin, forms.Form):
     """Administrator form to activate an account and choose its roles."""
 
+    organization_type = forms.ChoiceField(
+        label='Catégorie du compte', choices=User.OrganizationType.choices,
+        help_text='Étudiant, salarié ou association : détermine le tableau de bord. Ne donne aucun droit d’administration.',
+    )
+    affiliation = forms.ModelChoiceField(
+        label='Organisation rattachée', queryset=Organization.objects.none(), required=False,
+        empty_label='— Aucune organisation —',
+    )
+    is_org_manager = forms.BooleanField(
+        label='Gestionnaire de son organisation', required=False,
+        help_text='Peut modifier le profil, les campagnes et les événements de l’organisation rattachée.',
+    )
     is_active = forms.BooleanField(label='Compte actif', required=False)
     groups = forms.ModelMultipleChoiceField(
         label='Rôles', queryset=Group.objects.none(), required=False, widget=forms.CheckboxSelectMultiple
@@ -151,6 +169,16 @@ class UserAccessForm(StyledFormMixin, forms.Form):
     def __init__(self, *args, target=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['groups'].queryset = Group.objects.order_by('name')
+        self.fields['affiliation'].queryset = Organization.objects.order_by('name')
         if target is not None and not self.is_bound:
+            self.fields['organization_type'].initial = target.organization_type
+            self.fields['affiliation'].initial = target.affiliation_id
+            self.fields['is_org_manager'].initial = target.is_org_manager
             self.fields['is_active'].initial = target.is_active
             self.fields['groups'].initial = list(target.groups.values_list('pk', flat=True))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('is_org_manager') and not cleaned.get('affiliation'):
+            self.add_error('is_org_manager', 'Rattachez d’abord le compte à une organisation pour en faire un gestionnaire.')
+        return cleaned

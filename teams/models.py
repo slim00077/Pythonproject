@@ -29,6 +29,11 @@ class Team(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='captained_teams',
         verbose_name='capitaine',
     )
+    organization = models.ForeignKey(
+        'organizations.Organization', on_delete=models.SET_NULL, null=True, blank=True, related_name='teams',
+        verbose_name='organisation (équipe de travail)',
+        help_text='Une équipe rattachée à une organisation n’accepte que les membres de cette organisation.',
+    )
     status = models.CharField('statut', max_length=20, choices=Status.choices, default=Status.ACTIVE)
     is_open = models.BooleanField('ouverte aux nouveaux membres', default=True)
     max_members = models.PositiveSmallIntegerField(

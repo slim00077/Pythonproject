@@ -5,11 +5,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from accounts.models import User
+from analytics.activity import log_activity
+from analytics.models import ActivityLog
+from core.decorators import superuser_required
 from core.utils import safe_next_url
 
-from .forms import PreferenceForm
+from .forms import AnnouncementForm, PreferenceForm
 from .models import Notification
-from .services import get_preferences
+from .services import get_preferences, notify_many
 
 
 def _own_notification(request, pk):
@@ -76,3 +80,23 @@ def preferences(request):
         messages.success(request, 'Préférences de notification enregistrées.')
         return redirect('notifications:preferences')
     return render(request, 'notifications/preferences.html', {'form': form})
+
+
+@superuser_required
+def announce(request):
+    """Broadcast an in-app announcement to a closed audience (administrators only)."""
+    form = AnnouncementForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        recipients = User.objects.filter(is_active=True)
+        if data['audience'] in User.OrganizationType.values:
+            recipients = recipients.filter(organization_type=data['audience'])
+        elif data['audience'] == 'organization':
+            recipients = recipients.filter(affiliation=data['organization'])
+        count = notify_many(recipients, Notification.Kind.SYSTEM, data['title'], data['message'])
+        log_activity(request.user, ActivityLog.Verb.ANNOUNCEMENT_SENT,
+                     f'Annonce « {data["title"]} » envoyée à {count} compte(s).', team=None)
+        messages.success(request, f'Annonce envoyée à {count} compte(s).')
+        return redirect('notifications:announce')
+    recent = ActivityLog.objects.filter(verb=ActivityLog.Verb.ANNOUNCEMENT_SENT).select_related('actor')[:8]
+    return render(request, 'notifications/announce.html', {'form': form, 'recent': recent})

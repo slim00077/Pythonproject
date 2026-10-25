@@ -7,7 +7,7 @@
     <nav class="breadcrumb"><a href="{% url 'community:list' %}">Événements</a> {% icon 'chevron-right' 14 %} Mes événements</nav>
     <h1>Mes événements</h1>
   </div>
-  <div class="page-actions"><a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a></div>
+  {% if can_create %}<div class="page-actions"><a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a></div>{% endif %}
 </div>
 <div class="split-even split">
   <div class="card">

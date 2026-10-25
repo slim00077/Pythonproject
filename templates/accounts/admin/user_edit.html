@@ -12,7 +12,7 @@
   <form method="post" class="card card-glass">
     {% csrf_token %}
     {% include 'partials/form_fields.html' %}
-    <div class="alert alert-info mt-2">{% icon 'info' %}<p>Le rôle « Utilisateur » est toujours conservé. Le statut d’administrateur (superutilisateur) ne peut pas être accordé depuis cette page.</p></div>
+    <div class="alert alert-info mt-2">{% icon 'info' %}<p>Le rôle « Utilisateur » est toujours conservé. Changer la catégorie du compte ou l’organisation ne donne <strong>aucun</strong> droit d’administration, et le statut de superutilisateur ne peut pas être accordé depuis cette page.</p></div>
     <div class="form-actions">
       <a class="btn btn-ghost" href="{% url 'accounts:user_list' %}">Annuler</a>
       <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
@@ -21,7 +21,11 @@
   <aside class="card">
     <div class="who mb-2">{% include 'partials/avatar.html' with u=target %}<span><strong>{{ target|display_name }}</strong><span>{{ target.email }}</span></span></div>
     <dl class="kv">
-      <dt>Profil</dt><dd>{{ target.get_organization_type_display }}</dd>
+      <dt>Catégorie</dt><dd>{{ target.get_organization_type_display }}</dd>
+      <dt>Organisation</dt><dd>{{ target.affiliation.name|default:'—' }}</dd>
+      <dt>Actions validées</dt><dd>{{ approved_actions }}</dd>
+      <dt>Défis réussis</dt><dd>{{ completed_challenges }}</dd>
+      <dt>Événements</dt><dd>{{ events_joined }}</dd>
       <dt>Équipe</dt><dd>{% if membership %}{{ membership.team.name }}{% else %}—{% endif %}</dd>
       <dt>Points</dt><dd>{{ points|intcomma }}</dd>
       <dt>Inscription</dt><dd>{{ target.date_joined|date:'d/m/Y' }}</dd>

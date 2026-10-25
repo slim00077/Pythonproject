@@ -14,6 +14,7 @@
   </div>
 </div>
 <form class="filters" method="get" data-autosubmit>
+  {% if scope %}<input type="hidden" name="scope" value="{{ scope }}">{% endif %}
   {% include 'partials/field.html' with field=form.q %}
   {% include 'partials/field.html' with field=form.category %}
   {% include 'partials/field.html' with field=form.difficulty %}

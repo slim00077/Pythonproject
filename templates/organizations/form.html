@@ -1,0 +1,35 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if is_create %}Créer mon organisation{% else %}Paramètres de l’organisation{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'organizations:detail' %}">Organisation</a> {% icon 'chevron-right' 14 %} {% if is_create %}Création{% else %}Paramètres{% endif %}</nav>
+    <h1>{% if is_create %}Créer mon organisation{% else %}Paramètres de {{ organization.name }}{% endif %}</h1>
+    <p class="page-sub">{% if is_create %}Vous en deviendrez le gestionnaire. Les droits d’administration de la plateforme ne sont jamais accordés par cette page.{% else %}Seuls les gestionnaires de l’organisation peuvent modifier ces informations.{% endif %}</p>
+  </div>
+</div>
+<div class="split">
+  <div class="card card-glass form-card" style="max-width:none">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include 'partials/form_fields.html' %}
+      <div class="form-actions">
+        <a class="btn btn-ghost" href="{% url 'organizations:detail' %}">Annuler</a>
+        <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+      </div>
+    </form>
+  </div>
+  {% if not is_create %}
+  <aside class="card">
+    <div class="card-head"><h3>{% icon 'users' %} Comptes rattachés</h3></div>
+    <ul class="list">
+      {% for member in colleagues %}
+        <li class="list-item">{% include 'partials/avatar.html' with u=member size='sm' %}<span class="grow"><span class="title">{{ member|display_name }}</span><span class="sub">{% if member.is_org_manager %}Gestionnaire{% else %}Membre{% endif %}</span></span></li>
+      {% endfor %}
+    </ul>
+    <p class="estimate-note mb-0">{% icon 'info' 14 %} Le rattachement et le rôle de gestionnaire sont attribués par un administrateur.</p>
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

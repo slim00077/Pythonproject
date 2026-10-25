@@ -1,0 +1,68 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Statistiques globales{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'bar-chart' 14 %} Centre de contrôle</span>
+    <h1>Statistiques globales</h1>
+    <p class="page-sub">Huit visualisations calculées à partir des enregistrements réels. Une base vide affiche des états vides, jamais de données inventées.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'analytics:reports' %}">{% icon 'file-text' 18 %} Rapports détaillés</a>
+    <a class="btn btn-ghost" href="{% url 'analytics:reports_export' %}">{% icon 'download' 18 %} Export CSV</a>
+  </div>
+</div>
+
+<div class="bento">
+  <div class="card span-8">
+    <div class="card-head"><div><h2>{% icon 'user-plus' %} Croissance des utilisateurs</h2><p class="card-sub">Comptes inscrits, cumul sur 12 semaines</p></div></div>
+    {{ s.user_growth|json_script:'st-growth' }}
+    <div class="chart" data-chart="line" data-source="st-growth" aria-label="Croissance des utilisateurs" data-empty="Aucun compte inscrit."></div>
+  </div>
+  <div class="card span-4">
+    <div class="card-head"><h2>{% icon 'users' %} Comptes par catégorie</h2></div>
+    {{ s.registered_by_category|json_script:'st-registered' }}
+    <div class="chart" style="min-height:0" data-chart="donut" data-source="st-registered" data-center-label="comptes" aria-label="Comptes par catégorie"></div>
+  </div>
+
+  <div class="card span-4">
+    <div class="card-head"><div><h2>{% icon 'activity' %} Participation par catégorie</h2><p class="card-sub">Comptes ayant déjà gagné des points</p></div></div>
+    {{ s.active_by_category|json_script:'st-active' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="st-active" aria-label="Participants actifs par catégorie de compte" data-empty="Aucun point n’a encore été attribué."></div>
+  </div>
+  <div class="card span-8">
+    <div class="card-head"><div><h2>{% icon 'activity' %} Participation dans le temps</h2><p class="card-sub">Inscriptions aux défis et aux événements par semaine</p></div></div>
+    {{ s.participation_over_time|json_script:'st-participation' }}
+    <div class="chart" data-chart="bar" data-source="st-participation" aria-label="Participation par semaine" data-empty="Aucune participation enregistrée."></div>
+  </div>
+
+  <div class="card span-6">
+    <div class="card-head"><h2>{% icon 'layers' %} Actions écologiques par catégorie</h2></div>
+    {{ s.actions_by_category|json_script:'st-actions' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="st-actions" aria-label="Actions validées par catégorie" data-empty="Aucune action validée."></div>
+  </div>
+  <div class="card span-6">
+    <div class="card-head"><h2>{% icon 'flag' %} Tendance des défis réussis</h2></div>
+    {{ s.challenge_completions|json_script:'st-completions' }}
+    <div class="chart" data-chart="line" data-source="st-completions" aria-label="Défis réussis par semaine" data-empty="Aucun défi réussi sur la période."></div>
+  </div>
+
+  <div class="card span-6">
+    <div class="card-head"><h2>{% icon 'trophy' %} Classement et performance des équipes</h2></div>
+    {{ s.team_ranking|json_script:'st-teams' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-source="st-teams" data-unit="pts" aria-label="Points par équipe" data-empty="Aucune équipe n’a de points."></div>
+  </div>
+  <div class="card span-3">
+    <div class="card-head"><h2>{% icon 'pie-chart' %} Validées / refusées</h2></div>
+    {{ s.status_breakdown|json_script:'st-status' }}
+    <div class="chart" style="min-height:0" data-chart="donut" data-source="st-status" data-center-label="déclarations" aria-label="Déclarations par statut" data-empty="Aucune déclaration."></div>
+  </div>
+  <div class="card span-3">
+    <div class="card-head"><h2>{% icon 'building' %} Organisations</h2></div>
+    {{ s.organization_activity|json_script:'st-orgs' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="st-orgs" aria-label="Activité par organisation" data-empty="Aucune activité d’organisation."></div>
+    <p class="estimate-note mt-1 mb-0">{% icon 'info' 14 %} Actions validées + événements.</p>
+  </div>
+</div>
+{% endblock %}

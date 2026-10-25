@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block body_class %}app-body{% endblock %}
+{% block body_class %}app-body theme-{{ nav.kind|default:'student' }}{% endblock %}
 {% block layout %}
 <div class="app">
   {% include 'partials/sidebar.html' %}

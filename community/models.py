@@ -42,6 +42,14 @@ class Event(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='organized_events',
         verbose_name='organisateur',
     )
+    organization = models.ForeignKey(
+        'organizations.Organization', on_delete=models.SET_NULL, null=True, blank=True, related_name='events',
+        verbose_name='organisation',
+    )
+    registration_deadline = models.DateTimeField(
+        'date limite d’inscription', null=True, blank=True,
+        help_text='Laisser vide pour autoriser les inscriptions jusqu’au début de l’événement.',
+    )
     target_audience = models.CharField('public visé', max_length=20, choices=Audience.choices, default=Audience.ALL)
     capacity = models.PositiveIntegerField(
         'capacité maximale', null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10000)],
@@ -86,6 +94,8 @@ class Event(models.Model):
             errors['online_url'] = 'Indiquez le lien de connexion pour un événement en ligne ou hybride.'
         if self.start_at and self.end_at and self.end_at < self.start_at:
             errors['end_at'] = 'La fin doit être postérieure au début.'
+        if self.registration_deadline and self.start_at and self.registration_deadline > self.start_at:
+            errors['registration_deadline'] = 'La date limite d’inscription doit précéder le début de l’événement.'
         if errors:
             raise ValidationError(errors)
 
@@ -114,8 +124,15 @@ class Event(models.Model):
         return self.end_at < timezone.now()
 
     @property
+    def registration_closed(self):
+        return bool(self.registration_deadline and self.registration_deadline < timezone.now())
+
+    @property
     def is_joinable(self):
-        return self.status == self.Status.PUBLISHED and not self.has_ended and not self.is_full
+        return (
+            self.status == self.Status.PUBLISHED and not self.has_ended and not self.is_full
+            and not self.registration_closed
+        )
 
     @property
     def participation_progress(self):

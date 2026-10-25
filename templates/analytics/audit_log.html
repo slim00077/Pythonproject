@@ -1,0 +1,39 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Journaux d’audit{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'history' 14 %} Traçabilité</span>
+    <h1>Activité et journaux d’audit</h1>
+    <p class="page-sub">Journal en ajout seul : décisions de modération, changements de rôles, comptes modifiés, annonces envoyées et actions des utilisateurs.</p>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label class="field-label" for="q">Rechercher</label><input class="input" id="q" type="search" name="q" value="{{ query }}" placeholder="Description, auteur…"></div>
+  <div class="field"><label class="field-label" for="verb">Type d’événement</label>
+    <select class="input" id="verb" name="verb">
+      <option value="">Tous</option>
+      {% for value, label in verbs %}<option value="{{ value }}" {% if verb == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Filtrer</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Date</th><th>Auteur</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      {% for log in page %}
+        <tr>
+          <td class="nowrap small">{{ log.created_at|date:'d/m/Y H:i' }}</td>
+          <td>{{ log.actor|display_name }}</td>
+          <td><span class="pill tone-{% if 'rejected' in log.verb or 'revoked' in log.verb %}danger{% elif 'role' in log.verb or 'account' in log.verb or 'announcement' in log.verb or 'organization' in log.verb %}blue{% elif 'approved' in log.verb or 'published' in log.verb %}success{% else %}muted{% endif %}">{{ log.get_verb_display }}</span></td>
+          <td>{% if log.link %}<a href="{{ log.link }}">{{ log.description }}</a>{% else %}{{ log.description }}{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% include 'partials/empty.html' with icon='history' title='Aucune entrée' text='Le journal est vide ou aucun résultat ne correspond au filtre.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

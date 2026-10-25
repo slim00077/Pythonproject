@@ -1,0 +1,42 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Impact communautaire{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'trending-up' 14 %} {{ organization.name }}</span>
+    <h1>Impact communautaire</h1>
+    <p class="page-sub">Indicateurs calculés à partir de vos campagnes, événements, inscriptions et des actions validées liées à vos défis.</p>
+  </div>
+</div>
+<div class="kpi-grid">
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'megaphone' 16 %} Campagnes</div><div class="kpi-value">{{ c.campaign_total }}</div></div>
+  <div class="card kpi-tile k-cyan"><div class="kpi-label">{% icon 'calendar' 16 %} Événements</div><div class="kpi-value">{{ c.event_total }}</div></div>
+  <div class="card kpi-tile k-blue"><div class="kpi-label">{% icon 'users' 16 %} Inscriptions</div><div class="kpi-value">{{ c.registration_total }}</div></div>
+  <div class="card kpi-tile k-green"><div class="kpi-label">{% icon 'check-circle' 16 %} Initiatives terminées</div><div class="kpi-value">{{ c.completed_total }}</div></div>
+  <div class="card kpi-tile k-amber"><div class="kpi-label">{% icon 'leaf' 16 %} Actions vérifiées</div><div class="kpi-value">{{ c.verified_actions }}</div><div class="kpi-hint">via vos défis publiés</div></div>
+  <div class="card kpi-tile k-cyan"><div class="kpi-label">{% icon 'cloud' 16 %} CO₂ évité</div><div class="kpi-value">{{ co2|floatformat:1 }} <small>kg</small></div><div class="kpi-hint">estimation, facteurs configurés</div></div>
+</div>
+<div class="bento">
+  <div class="card span-8">
+    <div class="card-head"><div><h2>{% icon 'trending-up' %} Tendance des inscriptions</h2><p class="card-sub">12 dernières semaines</p></div></div>
+    {{ weekly_registrations|json_script:'imp-weekly' }}
+    <div class="chart" data-chart="line" data-source="imp-weekly" aria-label="Inscriptions par semaine" data-empty="Aucune inscription sur la période."></div>
+  </div>
+  <div class="card span-4">
+    <div class="card-head"><h2>{% icon 'layers' %} Événements par thème</h2></div>
+    {{ event_categories|json_script:'imp-event-cat' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="imp-event-cat" aria-label="Événements par thème" data-empty="Aucun événement."></div>
+  </div>
+  <div class="card span-6">
+    <div class="card-head"><h2>{% icon 'users' %} Inscriptions par événement</h2></div>
+    {{ per_event_chart|json_script:'imp-per-event' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="imp-per-event" aria-label="Inscriptions par événement" data-empty="Aucune inscription."></div>
+  </div>
+  <div class="card span-6">
+    <div class="card-head"><h2>{% icon 'leaf' %} Actions vérifiées par catégorie</h2></div>
+    {{ action_categories|json_script:'imp-actions' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-multicolor data-source="imp-actions" aria-label="Actions vérifiées par catégorie" data-empty="Aucune action validée liée à vos défis."></div>
+  </div>
+</div>
+{% endblock %}

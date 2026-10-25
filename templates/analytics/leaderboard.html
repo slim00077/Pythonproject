@@ -4,12 +4,13 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <span class="eyebrow">{% icon 'trophy' 14 %} Classement dynamique</span>
-    <h1>Classement des équipes</h1>
+    <span class="eyebrow">{% icon 'trophy' 14 %} {% if organization %}{{ organization.name }}{% else %}Classement dynamique{% endif %}</span>
+    <h1>{% if organization %}Classement des équipes de travail{% else %}Classement des équipes{% endif %}</h1>
     <p class="page-sub">Calculé en temps réel à partir du registre des points : seules les actions validées et les défis réussis comptent.</p>
   </div>
 </div>
 <form class="filters" method="get" data-autosubmit>
+  {% if scope %}<input type="hidden" name="scope" value="{{ scope }}">{% endif %}
   <div class="field"><label class="field-label" for="lp">Période</label>
     <select class="input" id="lp" name="period">{% for value, label in periods.items %}<option value="{{ value }}" {% if period == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
   <div class="field"><label class="field-label" for="lc">Catégorie</label>

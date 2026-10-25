@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.paginator import Paginator
+from django.http import Http404
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import Coalesce
@@ -101,6 +102,10 @@ def public_profile(request, username):
     user = get_object_or_404(User, username=username, is_active=True)
     if user == request.user:
         return redirect('accounts:profile')
+    # An employee's profile is private to the members of the same organization (and administrators).
+    if (user.organization_type == User.OrganizationType.EMPLOYEE and not request.user.is_superuser
+            and (not user.affiliation_id or user.affiliation_id != request.user.affiliation_id)):
+        raise Http404
     context = _profile_context(user)
     context['is_own'] = False
     return render(request, 'accounts/profile.html', context)
@@ -221,7 +226,13 @@ def role_delete(request, pk):
 
 @superuser_required
 def user_list(request):
-    users = User.objects.annotate(points=Coalesce(Sum('point_transactions__amount'), 0)).prefetch_related('groups')
+    users = (
+        User.objects.annotate(points=Coalesce(Sum('point_transactions__amount'), 0))
+        .select_related('affiliation').prefetch_related('groups')
+    )
+    category = request.GET.get('category', '')
+    if category in User.OrganizationType.values:
+        users = users.filter(organization_type=category)
     query = request.GET.get('q', '').strip()
     role = request.GET.get('role', '')
     status = request.GET.get('status', '')
@@ -242,6 +253,7 @@ def user_list(request):
         user.membership = memberships.get(user.pk)
     return render(request, 'accounts/admin/user_list.html', {
         'page': page, 'query': query, 'role': role, 'status': status, 'groups': Group.objects.order_by('name'),
+        'category': category, 'categories': User.OrganizationType.choices,
     })
 
 
@@ -257,13 +269,20 @@ def user_edit(request, pk):
             groups = set(form.cleaned_data['groups']) | {get_default_role_group()}
             target.groups.set(groups)
             target.is_active = form.cleaned_data['is_active']
-            target.save(update_fields=['is_active'])
-            log_activity(request.user, ActivityLog.Verb.ROLE_CHANGED,
-                         f'Accès de {target.display_name} mis à jour.', team=None)
+            target.organization_type = form.cleaned_data['organization_type']
+            target.affiliation = form.cleaned_data['affiliation']
+            target.is_org_manager = bool(form.cleaned_data['is_org_manager'] and target.affiliation_id)
+            # The category never touches is_staff / is_superuser: privileges only come from roles.
+            target.save(update_fields=['is_active', 'organization_type', 'affiliation', 'is_org_manager'])
+            log_activity(request.user, ActivityLog.Verb.ACCOUNT_UPDATED,
+                         f'Compte de {target.display_name} mis à jour (catégorie, organisation, rôles).', team=None)
             notify(target, Notification.Kind.SYSTEM, 'Vos accès ont été mis à jour',
                    'Un administrateur a modifié vos rôles sur EcoTeams.')
         messages.success(request, f'Accès de {target.display_name} enregistrés.')
         return redirect('accounts:user_list')
     return render(request, 'accounts/admin/user_edit.html', {
         'form': form, 'target': target, 'membership': get_membership(target), 'points': user_points(target),
+        'approved_actions': target.action_submissions.filter(status='approved').count(),
+        'completed_challenges': target.challenge_participations.filter(status='completed').count(),
+        'events_joined': target.event_participations.count(),
     })

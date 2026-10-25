@@ -1,0 +1,28 @@
+{% load eco_tags %}
+<div class="nav-label">Mon association</div>
+<a class="nav-link {% if ns == 'analytics' and url_name == 'dashboard' %}active{% endif %}" href="{% url 'analytics:dashboard' %}">{% icon 'dashboard' %} Tableau de bord</a>
+{% if nav.has_org %}
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'detail' %}active{% endif %}" href="{% url 'organizations:detail' %}">{% icon 'building' %} Profil de l’organisation</a>
+{% else %}
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'create' %}active{% endif %}" href="{% url 'organizations:create' %}">{% icon 'plus' %} Créer mon organisation</a>
+{% endif %}
+<a class="nav-link {% if ns == 'notifications' %}active{% endif %}" href="{% url 'notifications:list' %}">{% icon 'bell' %} Notifications
+  {% if unread_notifications_count %}<span class="nav-badge">{{ unread_notifications_count }}</span>{% endif %}</a>
+
+{% if nav.is_org_manager %}
+  <div class="nav-label">Mobiliser</div>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'campaigns' %}active{% endif %}" href="{% url 'organizations:campaigns' %}">{% icon 'megaphone' %} Mes campagnes</a>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'events' %}active{% endif %}" href="{% url 'organizations:events' %}">{% icon 'calendar' %} Événements écologiques</a>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'proposals' %}active{% endif %}" href="{% url 'organizations:proposals' %}">{% icon 'flag' %} Défis proposés</a>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'participants' %}active{% endif %}" href="{% url 'organizations:participants' %}">{% icon 'users' %} Participants</a>
+
+  <div class="nav-label">Mesurer</div>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'impact' %}active{% endif %}" href="{% url 'organizations:impact' %}">{% icon 'trending-up' %} Impact communautaire</a>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'history' %}active{% endif %}" href="{% url 'organizations:history' %}">{% icon 'history' %} Historique d’activité</a>
+  <a class="nav-link {% if ns == 'organizations' and url_name == 'settings' %}active{% endif %}" href="{% url 'organizations:settings' %}">{% icon 'sliders' %} Paramètres de l’organisation</a>
+{% endif %}
+
+<div class="nav-label">Explorer</div>
+<a class="nav-link {% if ns == 'community' %}active{% endif %}" href="{% url 'community:list' %}">{% icon 'search' %} Événements publics</a>
+<a class="nav-link {% if ns == 'analytics' and url_name == 'leaderboard' %}active{% endif %}" href="{% url 'analytics:leaderboard' %}">{% icon 'trophy' %} Classement</a>
+<a class="nav-link {% if ns == 'accounts' and url_name|slice:':7' == 'profile' %}active{% endif %}" href="{% url 'accounts:profile' %}">{% icon 'user' %} Mon profil</a>

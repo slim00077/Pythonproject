@@ -4,13 +4,13 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <span class="eyebrow">{% icon 'calendar' 14 %} Module 5 · Communauté</span>
-    <h1>Événements et campagnes</h1>
-    <p class="page-sub">Nettoyages, ateliers, conférences, campagnes de sensibilisation : retrouvez la communauté sur le terrain ou en ligne.</p>
+    <span class="eyebrow">{% icon 'calendar' 14 %} {% if scope == 'org' %}Mon organisation{% else %}Communauté{% endif %}</span>
+    <h1>{% if scope == 'org' %}Campagnes et événements de mon organisation{% else %}Événements et campagnes{% endif %}</h1>
+    <p class="page-sub">{% if scope == 'org' %}Les campagnes et événements portés par votre organisation. Inscrivez-vous et participez aux défis associés.{% else %}Nettoyages, ateliers, conférences, campagnes de sensibilisation : retrouvez la communauté sur le terrain ou en ligne.{% endif %}</p>
   </div>
   <div class="page-actions">
     <a class="btn btn-ghost" href="{% url 'community:mine' %}">{% icon 'list' 18 %} Mes événements</a>
-    <a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a>
+    {% if can_create %}<a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a>{% endif %}
   </div>
 </div>
 
@@ -28,6 +28,7 @@
 {% endif %}
 
 <form class="filters" method="get" data-autosubmit>
+  {% if scope %}<input type="hidden" name="scope" value="{{ scope }}">{% endif %}
   {% include 'partials/field.html' with field=form.q %}
   {% include 'partials/field.html' with field=form.kind %}
   {% include 'partials/field.html' with field=form.category %}

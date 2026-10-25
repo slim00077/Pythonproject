@@ -29,6 +29,17 @@ def can_manage_team(user, team):
     return is_captain(user, team) or (user.is_authenticated and user.is_superuser)
 
 
+def can_view_team(user, team):
+    """Workplace teams belong to their organization: other accounts cannot see them."""
+    if team.organization_id is None:
+        return True
+    return bool(user.is_authenticated and (user.is_superuser or user.affiliation_id == team.organization_id))
+
+
+def can_join_team(user, team):
+    return team.organization_id is None or user.affiliation_id == team.organization_id
+
+
 def _team_users(team, exclude=None):
     qs = team.members.filter(is_active=True)
     if exclude is not None:
@@ -43,6 +54,9 @@ def create_team(user, form):
         raise BusinessRuleError('Vous faites déjà partie d’une équipe. Quittez-la avant d’en créer une nouvelle.')
     team = form.save(commit=False)
     team.captain = user
+    # A team created by a member of an organization is a workplace team of that organization.
+    if user.affiliation_id and user.organization_type == user.OrganizationType.EMPLOYEE:
+        team.organization_id = user.affiliation_id
     team.save()
     Membership.objects.create(team=team, user=user, role=Membership.Role.CAPTAIN)
     log_activity(user, ActivityLog.Verb.TEAM_CREATED, f'{user.display_name} a créé l’équipe « {team.name} ».',
@@ -68,6 +82,8 @@ def join_team(user, team):
             raise BusinessRuleError('Cette équipe n’accepte pas de nouveaux membres pour le moment.')
         if not team.is_open:
             raise BusinessRuleError('Cette équipe est fermée aux nouvelles inscriptions.')
+        if not can_join_team(user, team):
+            raise BusinessRuleError('Cette équipe est réservée aux membres de son organisation.')
         if team.memberships.count() >= team.max_members:
             raise BusinessRuleError('Cette équipe est complète.')
         try:

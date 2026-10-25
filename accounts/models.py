@@ -29,6 +29,17 @@ class User(AbstractUser):
     avatar = models.ImageField(
         'photo de profil', upload_to=UploadToUUID('avatars'), blank=True, validators=image_validators
     )
+    # Account category (``organization_type``), organization membership and
+    # authorization (groups / permissions / is_superuser) are three separate
+    # concepts: changing one never changes the others.
+    affiliation = models.ForeignKey(
+        'organizations.Organization', on_delete=models.SET_NULL, null=True, blank=True, related_name='members',
+        verbose_name='organisation rattachée',
+    )
+    is_org_manager = models.BooleanField(
+        'gestionnaire de son organisation', default=False,
+        help_text='Autorise à modifier le profil, les campagnes et les événements de son organisation.',
+    )
 
     class Meta:
         verbose_name = 'utilisateur'
@@ -41,6 +52,15 @@ class User(AbstractUser):
     @property
     def display_name(self):
         return self.get_full_name() or self.username
+
+    @property
+    def category(self):
+        """Account category used to pick the dashboard: student, employee, association (or other)."""
+        return self.organization_type
+
+    @property
+    def can_manage_organization(self):
+        return bool(self.is_active and self.is_org_manager and self.affiliation_id)
 
     def save(self, *args, **kwargs):
         if self.email:

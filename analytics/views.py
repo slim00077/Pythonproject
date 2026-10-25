@@ -2,19 +2,20 @@ import csv
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from community.services import send_due_reminders
 from core.choices import EcoCategory
-from core.decorators import any_permission_required, backoffice_required
+from core.decorators import any_permission_required, backoffice_required, superuser_required
 from core.permissions import VIEW_REPORTS
 from gamification.models import PointTransaction
 from gamification.services import user_points
 from teams.services import get_user_team
 
-from . import services
+from . import dashboards, services
 from .models import ActivityLog
 
 REPORT_PERIODS = {'week': '7 derniers jours', 'month': '30 derniers jours', 'quarter': '90 derniers jours',
@@ -23,9 +24,23 @@ REPORT_PERIODS = {'week': '7 derniers jours', 'month': '30 derniers jours', 'qua
 
 @login_required
 def dashboard(request):
-    send_due_reminders(request.user)
-    stats = services.user_dashboard(request.user)
-    return render(request, 'analytics/dashboard.html', {
+    """Each account category has its own dashboard; administrators use the control center."""
+    user = request.user
+    if user.is_superuser:
+        return redirect('analytics:admin_dashboard')
+    send_due_reminders(user)
+    if user.organization_type == user.OrganizationType.EMPLOYEE:
+        data = dashboards.employee_dashboard(user)
+        return render(request, 'analytics/dashboard_employee.html', {
+            'd': data, 'weekly_chart': data['weekly_points'], 'category_chart': data['categories'],
+        })
+    if user.organization_type == user.OrganizationType.ASSOCIATION:
+        data = dashboards.association_dashboard(user)
+        return render(request, 'analytics/dashboard_association.html', {
+            'd': data, 'registrations_chart': data.get('weekly_registrations', []),
+        })
+    stats = services.user_dashboard(user)
+    return render(request, 'analytics/dashboard_student.html', {
         'stats': stats,
         'daily_chart': stats['daily_points'],
         'weekly_chart': stats['weekly_points'],
@@ -40,14 +55,21 @@ def leaderboard(request):
     category = category if category in EcoCategory.values else ''
     sort = request.GET.get('sort', 'points')
     sort = sort if sort in services.LEADERBOARD_SORTS else 'points'
-    rows = services.team_leaderboard(period=period, category=category, sort=sort)
+    scope = request.GET.get('scope', '')
+    organization = None
+    if scope == 'org':
+        organization = request.user.affiliation
+        if organization is None:
+            scope = ''
+    rows = services.team_leaderboard(period=period, category=category, sort=sort, organization=organization,
+                                     viewer=request.user)
     podium = sorted([row for row in rows if row.points > 0], key=lambda team: team.rank)[:3]
     return render(request, 'analytics/leaderboard.html', {
         'rows': rows,
         'podium': podium,
         'my_team': get_user_team(request.user),
         'top_users': services.user_leaderboard(period=period, limit=10),
-        'period': period, 'category': category, 'sort': sort,
+        'period': period, 'category': category, 'sort': sort, 'scope': scope, 'organization': organization,
         'periods': services.PERIODS, 'sorts': services.LEADERBOARD_SORTS, 'categories': EcoCategory.choices,
         'chart': [{'label': row.name, 'value': row.points} for row in sorted(rows, key=lambda t: t.rank)[:8]],
     })
@@ -78,6 +100,7 @@ def history(request):
 @backoffice_required
 def admin_dashboard(request):
     overview = services.admin_overview()
+    overview.update(dashboards.admin_counters())
     return render(request, 'analytics/admin_dashboard.html', {
         'o': overview,
         'weekly_points_chart': overview['weekly_points'],
@@ -130,3 +153,25 @@ def reports_export(request):
     writer.writerow([])
     writer.writerow(['Les valeurs de CO₂ sont des estimations calculées à partir des facteurs configurés.'])
     return response
+
+
+@superuser_required
+def admin_stats(request):
+    stats = dashboards.admin_statistics()
+    return render(request, 'analytics/admin_stats.html', {'s': stats})
+
+
+@superuser_required
+def audit_log(request):
+    logs = ActivityLog.objects.select_related('actor', 'team')
+    query = request.GET.get('q', '').strip()
+    verb = request.GET.get('verb', '')
+    if query:
+        logs = logs.filter(Q(description__icontains=query) | Q(actor__username__icontains=query)
+                           | Q(actor__first_name__icontains=query) | Q(actor__last_name__icontains=query))
+    if verb in ActivityLog.Verb.values:
+        logs = logs.filter(verb=verb)
+    page = Paginator(logs, 25).get_page(request.GET.get('page'))
+    return render(request, 'analytics/audit_log.html', {
+        'page': page, 'query': query, 'verb': verb, 'verbs': ActivityLog.Verb.choices,
+    })

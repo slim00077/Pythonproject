@@ -88,10 +88,10 @@ class DemoDataSmokeTests(TestCase):
             reverse('actions:list'), reverse('actions:catalog'), reverse('actions:create'),
             submission.get_absolute_url(), reverse('goals:list'), reverse('goals:create'), goal.get_absolute_url(),
             reverse('goals:update', args=[goal.pk]), reverse('gamification:achievements'), reverse('community:list'),
-            reverse('community:list') + '?when=past', reverse('community:mine'), reverse('community:create'),
+            reverse('community:list') + '?when=past', reverse('community:mine'),
             event.get_absolute_url(), reverse('notifications:list'), reverse('notifications:preferences'),
             notification.get_absolute_url(), reverse('accounts:profile'), reverse('accounts:profile_edit'),
-            reverse('accounts:password_change'), reverse('accounts:public_profile', args=['demo_lina']),
+            reverse('accounts:password_change'), reverse('accounts:public_profile', args=['demo_sarra']),
         ]
 
     def admin_pages(self):
@@ -122,9 +122,17 @@ class DemoDataSmokeTests(TestCase):
 
     def test_admin_pages_render_for_superuser(self):
         self.client.force_login(self.admin)
-        extra = [reverse('analytics:dashboard'), reverse('core:home'), reverse('teams:create')]
+        extra = [reverse('core:home'), reverse('teams:create'), reverse('analytics:admin_stats'), reverse('analytics:audit_log'),
+                 reverse('organizations:admin_list'), reverse('organizations:admin_create'), reverse('notifications:announce'),
+                 reverse('community:create')]
         for url in self.admin_pages() + extra:
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_student_cannot_create_events_and_admin_dashboard_redirects(self):
+        self.client.force_login(self.member)
+        self.assertEqual(self.client.get(reverse('community:create')).status_code, 403)
+        self.client.force_login(self.admin)
+        self.assertRedirects(self.client.get(reverse('analytics:dashboard')), reverse('analytics:admin_dashboard'))
 
     def test_member_already_in_a_team_is_redirected_from_team_creation(self):
         self.client.force_login(self.member)

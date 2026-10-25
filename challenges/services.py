@@ -59,6 +59,7 @@ def participation_progress(participation):
 def create_challenge(user, form):
     challenge = form.save(commit=False)
     challenge.creator = user
+    challenge.organization = user.affiliation if user.can_manage_organization else None
     challenge.status = Challenge.Status.DRAFT
     challenge.save()
     log_activity(user, ActivityLog.Verb.CHALLENGE_CREATED, f'Brouillon de défi « {challenge.title} » créé.',

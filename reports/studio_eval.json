@@ -1,0 +1,478 @@
+{
+  "summary": {
+    "ambitions_evaluees": 8,
+    "reponses_obtenues": 8,
+    "echecs_api": 0,
+    "propositions_valides_sur_renvoyees": "24/24",
+    "taux_de_validite_pct": 100,
+    "latence_ms": {
+      "moyenne": 1772,
+      "mediane": 1696,
+      "p95": 2242,
+      "max": 2242
+    },
+    "tokens_entree_moyens": 586,
+    "tokens_sortie_moyens": 344,
+    "taux_de_reussite_par_critere": {
+      "json_exploitable": 100,
+      "trois_propositions_renvoyees": 100,
+      "toutes_valides_pour_le_formulaire": 100,
+      "difficulte_facile_moyen_ambitieux": 100,
+      "titres_distincts": 100,
+      "cibles_croissantes": 100,
+      "suivi_automatique_privilegie": 62,
+      "premier_pas_renseigne": 100
+    }
+  },
+  "details": [
+    {
+      "ambition": "Je veux réduire ma consommation d’énergie à la maison avant la fin du trimestre",
+      "latency_ms": 2242,
+      "input_tokens": 592,
+      "output_tokens": 397,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": true,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Baissez le chauffage d'un degré",
+          "description": "Vous avez validé 10 actions ce mois-ci, montrant une belle régularité pour étendre vos efforts à l'énergie.\n\nPremier pas : Ajuster votre thermostat principal dès aujourd'hui.",
+          "category": "energy",
+          "tracking_mode": "manual",
+          "target_value": 4,
+          "unit": "semaines",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Éteindre les appareils en veille",
+          "description": "Fort de votre série de 8 jours d'engagement, vous pouvez ancrer cette nouvelle habitude énergétique.\n\nPremier pas : Installer une multiprise avec interrupteur dans le salon.",
+          "category": "energy",
+          "tracking_mode": "actions",
+          "target_value": 10,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-09",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Optimiser la consommation électrique",
+          "description": "Avec 220 points cumulés, vous avez l'expérience nécessaire pour viser une réduction globale ce trimestre.\n\nPremier pas : Faire un état des lieux de tous vos gros appareils consommateurs.",
+          "category": "energy",
+          "tracking_mode": "actions",
+          "target_value": 25,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2027-01-23",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Je voudrais me déplacer davantage à vélo et moins en voiture",
+      "latency_ms": 1824,
+      "input_tokens": 588,
+      "output_tokens": 398,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": true,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Doubler mes trajets doux",
+          "description": "Tu as déjà validé 10 actions en transport ces derniers 30 jours, tu peux continuer sur cette lancée.\n\nPremier pas : Planifier 3 trajets de la semaine prochaine à vélo.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 12,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Cap sur les 20 déplacements",
+          "description": "Avec tes 10 actions récentes et ta série de 8 jours, tu as le rythme idéal pour progresser.\n\nPremier pas : Identifier les jours propices au vélo pour toute la semaine.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 20,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Le grand saut à vélo",
+          "description": "En te basant sur tes 220 points et tes 10 actions du mois dernier, tu peux viser plus haut.\n\nPremier pas : Préparer ton équipement et vérifier ton vélo dès ce soir.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 28,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Je veux arrêter de gaspiller la nourriture",
+      "latency_ms": 1723,
+      "input_tokens": 584,
+      "output_tokens": 409,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": false,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Debuter l anti gaspi",
+          "description": "Vous avez commence avec succes 10 actions dans d autres domaines et une serie de 8 jours, vous pouvez elargir vos efforts.\n\nPremier pas : Planifier un repas avec les restes du frigo cette semaine.",
+          "category": "food",
+          "tracking_mode": "manual",
+          "target_value": 3,
+          "unit": "repas",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-08",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Gestion rigoureuse des restes",
+          "description": "Fort de vos 220 points accumules, vous avez la constance pour tenir cet engagement alimentaire.\n\nPremier pas : Identifier une date limite de consommation proche et cuisiner l aliment associe.",
+          "category": "food",
+          "tracking_mode": "manual",
+          "target_value": 8,
+          "unit": "repas",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Champion anti-gaspillage",
+          "description": "Avec votre serie en cours de 8 jours, vous avez l habitude de ancrer de nouvelles routines durables.\n\nPremier pas : Faire l inventaire complet des placards pour composer les menus de la semaine sans achat superflu.",
+          "category": "food",
+          "tracking_mode": "manual",
+          "target_value": 15,
+          "unit": "repas",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-09",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Je veux mieux trier mes déchets et recycler plus",
+      "latency_ms": 1670,
+      "input_tokens": 586,
+      "output_tokens": 260,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": true,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Débuter le tri sélectif",
+          "description": "Vous avez réalisé 10 actions ce mois-ci mais aucune en recyclage.\n\nPremier pas : Installer une poubelle dédiée au tri dans la cuisine cette semaine.",
+          "category": "recycling",
+          "tracking_mode": "actions",
+          "target_value": 5,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-08",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Devenir pro du recyclage",
+          "description": "Avec une série en cours de 8 jours, vous êtes prêt à étendre vos efforts.\n\nPremier pas : Valider au moins 2 gestes de tri ou recyclage dès cette semaine.",
+          "category": "recycling",
+          "tracking_mode": "actions",
+          "target_value": 12,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Expert du recyclage",
+          "description": "Vous avez déjà accumulé 220 points, passez à la vitesse supérieure.\n\nPremier pas : Trier l'intégralité des emballages et du verre de votre foyer.",
+          "category": "recycling",
+          "tracking_mode": "actions",
+          "target_value": 25,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-24",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Consommer moins d’eau sous la douche",
+      "latency_ms": 1640,
+      "input_tokens": 586,
+      "output_tokens": 325,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": false,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Douches express",
+          "description": "Vous avez validé 10 actions ce dernier mois et maintenez une belle série de 8 jours, prouvant votre rigueur.\n\nPremier pas : Chronométrer votre douche demain matin pour viser moins de 5 minutes.",
+          "category": "water",
+          "tracking_mode": "manual",
+          "target_value": 7,
+          "unit": "douches",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-08",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Chasse au gaspillage d'eau",
+          "description": "Fort de vos 220 points accumulés, vous pouvez étendre vos efforts au-delà du transport.\n\nPremier pas : Noter chaque réduction de temps sous la douche dans votre carnet.",
+          "category": "water",
+          "tracking_mode": "manual",
+          "target_value": 20,
+          "unit": "douches",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Expert de l'eau",
+          "description": "Votre régularité sur 30 jours montre que vous êtes capable d'ancrer de nouvelles habitudes durables.\n\nPremier pas : Installer un réducteur de débit sur votre pommeau de douche.",
+          "category": "water",
+          "tracking_mode": "manual",
+          "target_value": 45,
+          "unit": "douches",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-24",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Acheter moins de vêtements neufs cette année",
+      "latency_ms": 1648,
+      "input_tokens": 586,
+      "output_tokens": 315,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": false,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Adopter la mode circulaire",
+          "description": "Vous avez validé 10 actions ce mois-ci et commencez à explorer la consommation responsable.\n\nPremier pas : Identifier une alternative de seconde main pour votre prochain achat.",
+          "category": "consumption",
+          "tracking_mode": "manual",
+          "target_value": 2,
+          "unit": "achats",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Trier ses envies vestimentaires",
+          "description": "Votre série de 8 jours consécutifs montre une belle régularité dans vos engagements.\n\nPremier pas : Attendre 48h avant de valider tout achat de vêtement non essentiel.",
+          "category": "consumption",
+          "tracking_mode": "manual",
+          "target_value": 5,
+          "unit": "semaines",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Zéro vêtement neuf ce trimestre",
+          "description": "Avec 220 points au compteur, vous êtes prêt pour un défi majeur en consommation.\n\nPremier pas : Faire l'inventaire de sa garde-robe pour redécouvrir ses tenues.",
+          "category": "consumption",
+          "tracking_mode": "manual",
+          "target_value": 90,
+          "unit": "jours",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2027-01-23",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "Je veux motiver mon équipe à faire un geste écologique chaque jour",
+      "latency_ms": 1855,
+      "input_tokens": 589,
+      "output_tokens": 379,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": true,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Maintenir la cadence transport",
+          "description": "Vous avez déjà validé 10 actions en transport ce mois-ci, continuez sur cette lancée.\n\nPremier pas : Enregistrer un trajet vert dès demain.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 12,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-08",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Passer la vitesse supérieure en mobilité",
+          "description": "Avec vos 10 actions récentes et une belle série de 8 jours, vous êtes capable de faire plus.\n\nPremier pas : Planifier vos déplacements de la semaine sans voiture.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 20,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Le défi transport ultime",
+          "description": "Vos 220 points montrent votre engagement, visez un mois record en transport.\n\nPremier pas : Sensibiliser un collègue à adopter un mode de transport doux.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 30,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "ambitieux"
+        }
+      ]
+    },
+    {
+      "ambition": "aider la planète",
+      "latency_ms": 1574,
+      "input_tokens": 579,
+      "output_tokens": 267,
+      "valid": 3,
+      "total": 3,
+      "checks": {
+        "json_exploitable": true,
+        "trois_propositions_renvoyees": true,
+        "toutes_valides_pour_le_formulaire": true,
+        "difficulte_facile_moyen_ambitieux": true,
+        "titres_distincts": true,
+        "cibles_croissantes": true,
+        "suivi_automatique_privilegie": true,
+        "premier_pas_renseigne": true
+      },
+      "proposals": [
+        {
+          "title": "Pédaler pour le climat",
+          "description": "Tu as déjà validé 10 actions en transport ces 30 derniers jours, continue sur cette lancée !\n\nPremier pas : Fais un trajet supplémentaire à vélo cette semaine.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 12,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-08",
+          "difficulty": "facile"
+        },
+        {
+          "title": "Cap sur la mobilité douce",
+          "description": "Avec une belle série de 8 jours et 10 actions transport enregistrées, tu peux intensifier tes efforts.\n\nPremier pas : Planifie tes déplacements de la semaine pour privilégier le vélo.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 18,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-11-24",
+          "difficulty": "moyen"
+        },
+        {
+          "title": "Champion du transport vert",
+          "description": "Tu as accumulé 220 points et 10 actions en transport, vise plus haut pour maximiser ton impact.\n\nPremier pas : Remplace tous tes trajets courts de la semaine par le vélo ou la marche.",
+          "category": "transport",
+          "tracking_mode": "actions",
+          "target_value": 25,
+          "unit": "actions",
+          "current_progress": 0,
+          "start_date": "2026-10-25",
+          "deadline": "2026-12-09",
+          "difficulty": "ambitieux"
+        }
+      ]
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,28 @@
+{% load eco_tags %}
+{# Delegated back-office: only the sections allowed by the roles granted to this account. #}
+<div class="nav-label">Gestion déléguée</div>
+<a class="nav-link {% if url_name == 'admin_dashboard' %}active{% endif %}" href="{% url 'analytics:admin_dashboard' %}">{% icon 'gauge' %} Vue d’ensemble</a>
+{% if nav.moderate_actions %}
+  <a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':10' == 'moderation' %}active{% endif %}" href="{% url 'actions_admin:moderation_list' %}">{% icon 'clipboard-check' %} Modération
+    {% if nav.pending_actions %}<span class="nav-badge">{{ nav.pending_actions }}</span>{% endif %}</a>
+{% endif %}
+{% if nav.review_challenges %}
+  <a class="nav-link {% if ns == 'challenges_admin' %}active{% endif %}" href="{% url 'challenges_admin:review_list' %}">{% icon 'flag' %} Défis à valider
+    {% if nav.pending_challenges %}<span class="nav-badge">{{ nav.pending_challenges }}</span>{% endif %}</a>
+{% endif %}
+{% if nav.review_events %}
+  <a class="nav-link {% if ns == 'community_admin' %}active{% endif %}" href="{% url 'community_admin:review_list' %}">{% icon 'megaphone' %} Événements à valider
+    {% if nav.pending_events %}<span class="nav-badge">{{ nav.pending_events }}</span>{% endif %}</a>
+{% endif %}
+{% if nav.manage_action_types %}
+  <a class="nav-link {% if ns == 'actions_admin' and url_name|slice:':4' == 'type' %}active{% endif %}" href="{% url 'actions_admin:type_list' %}">{% icon 'layers' %} Catalogue d’actions</a>
+{% endif %}
+{% if nav.manage_badges %}
+  <a class="nav-link {% if ns == 'gamification' and url_name|slice:':5' == 'badge' %}active{% endif %}" href="{% url 'gamification:badge_list' %}">{% icon 'medal' %} Badges</a>
+{% endif %}
+{% if nav.adjust_points %}
+  <a class="nav-link {% if ns == 'gamification' and url_name == 'ledger' or url_name == 'adjust' %}active{% endif %}" href="{% url 'gamification:ledger' %}">{% icon 'zap' %} Registre des points</a>
+{% endif %}
+{% if nav.view_reports %}
+  <a class="nav-link {% if url_name == 'reports' %}active{% endif %}" href="{% url 'analytics:reports' %}">{% icon 'pie-chart' %} Rapports</a>
+{% endif %}

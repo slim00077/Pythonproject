@@ -41,6 +41,14 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]')
 CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+for _loopback in ('127.0.0.1', 'localhost'):  # container health checks call the app from inside
+    if _loopback not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_loopback)
+# Render exposes the public hostname of the service at runtime: trust it without manual configuration.
+_render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if _render_host:
+    ALLOWED_HOSTS.append(_render_host)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
 
 
 # Application definition
@@ -55,6 +63,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     # Shared infrastructure
     'core',
+    'organizations',
     'accounts',
     # Member 1 — Teams and memberships
     'teams',
@@ -206,6 +215,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+if not DEBUG:
+    # gunicorn has no static file server: WhiteNoise serves /static/ from STATIC_ROOT (after `collectstatic`).
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    # Compressed (gzip/brotli) static files with long-lived caching headers.
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+    }
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -222,10 +239,18 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 
+if env_bool('DJANGO_BEHIND_PROXY', default=False):
+    # The platform terminates HTTPS and forwards the original scheme in this header.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = env_bool('DJANGO_SECURE_COOKIES', default=True)
     CSRF_COOKIE_SECURE = env_bool('DJANGO_SECURE_COOKIES', default=True)
     SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', default=False)
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # probes use plain HTTP inside the container
+    # HTTP Strict Transport Security (0 = off). Raise it once HTTPS works everywhere (e.g. 31536000 = 1 year).
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
 
 
 # Messages
@@ -241,6 +266,25 @@ ECOTEAMS_DEFAULT_ROLE = 'Utilisateur'
 ECOTEAMS_TEAM_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000]
 ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_AGE_DAYS', '30'))
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
+
+
+# Coach IA des objectifs (goals/ai.py). Les clés ne sont JAMAIS dans le code : variables d'environnement.
+# Fournisseur : « gemini » (GEMINI_API_KEY) ou « anthropic » (ANTHROPIC_API_KEY). Par défaut, Gemini si une
+# clé Gemini est définie, sinon Anthropic. Sans clé, la fonctionnalité affiche un message explicite.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY') or ''
+ECOTEAMS_AI_ENABLED = env_bool('ECOTEAMS_AI_ENABLED', default=True)
+ECOTEAMS_AI_PROVIDER = os.environ.get('ECOTEAMS_AI_PROVIDER', '').strip().lower() or (
+    'gemini' if GEMINI_API_KEY else 'anthropic'
+)
+ECOTEAMS_AI_MODEL = os.environ.get('ECOTEAMS_AI_MODEL', '') or (
+    'gemini-flash-lite-latest' if ECOTEAMS_AI_PROVIDER == 'gemini' else 'claude-opus-5-5'
+)
+ECOTEAMS_AI_EFFORT = os.environ.get('ECOTEAMS_AI_EFFORT', 'low')  # Anthropic uniquement
+ECOTEAMS_AI_TIMEOUT_SECONDS = float(os.environ.get('ECOTEAMS_AI_TIMEOUT_SECONDS', '45'))
+ECOTEAMS_AI_DAILY_LIMIT = int(os.environ.get('ECOTEAMS_AI_DAILY_LIMIT', '10'))
+# True : l'appel se fait dans un thread d'arrière-plan (la requête HTTP rend la main tout de suite).
+# False : appel synchrone (utilisé par les tests).
+ECOTEAMS_AI_BACKGROUND = env_bool('ECOTEAMS_AI_BACKGROUND', default=True)
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

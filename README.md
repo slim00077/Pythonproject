@@ -524,3 +524,140 @@ décrivez le changement, demandez la relecture d’au moins un autre membre, vé
 
 - **IA (version future)** : les services métier existants offrent des points d’accroche naturels (recommandation d’équipe à partir des profils, génération de brouillons de défis soumis à validation, aide à la déclaration, coach personnel, analyse d’impact d’équipe). Toute fonctionnalité d’IA devra rester consultative : elle ne pourra ni publier, ni valider, ni attribuer de points sans passer par les services et permissions existants.
 - Notifications par e-mail, export PDF des rapports, plusieurs équipes par participant, API REST.
+
+---
+
+## 14. Module 4 — Objectifs et gamification : Coach IA, tests, accessibilité
+
+### 14.1 Coach IA des objectifs
+
+Sur la page d’un objectif (`/goals/<id>/`), le bouton **« Obtenir un conseil »** demande à un modèle d’IA (**Gemini** ou **Claude**, au choix) un
+conseil personnalisé : évaluation honnête de l’avancement, puis 2 ou 3 actions concrètes avant l’échéance.
+
+| Élément | Choix |
+|---|---|
+| Cas d’usage | Aider à tenir un objectif personnel à partir des **chiffres réels** de la base (progression, jours restants, actions validées sur 14 jours, série, points). Consultatif : ne modifie jamais objectifs, points ou badges. |
+| Appel technique | `goals/ai.py` (prompt + appel des SDK officiels `google-genai` ou `anthropic`), `goals/services.py` (file de demandes), vues JSON dans `goals/views.py`. |
+| Clé API | Variable d’environnement `GEMINI_API_KEY` ou `ANTHROPIC_API_KEY` (fichier `.env`, ignoré par Git). Jamais dans le code. Fournisseur : Gemini si `GEMINI_API_KEY` est définie, sinon Claude (`ECOTEAMS_AI_PROVIDER` pour forcer). |
+| Données envoyées | Chiffres de l’objectif uniquement : **ni nom, ni e-mail, ni identifiant**. Les textes libres (titre, description) sont encadrés par des balises et déclarés comme données, pas comme instructions (défense contre l’injection de prompt). |
+| Asynchronisme | La requête HTTP crée une ligne `GoalAdvice` (statut *pending*) et lance un **thread d’arrière-plan** ; le navigateur interroge `/goals/<id>/advice/<n>/` toutes les 1,5 s (`static/js/goal_coach.js`). Aucun blocage du serveur. Une demande « perdue » (redémarrage) expire seule. En production, remplacer le thread par Celery/Redis ne change que `request_advice`. |
+| Expérience utilisateur | Indicateur « Le coach analyse vos progrès… » (zone `aria-live`), bouton désactivé pendant l’appel, message d’erreur explicite (clé manquante/refusée, quota, délai dépassé, réseau, service indisponible), notation « utile / pas utile ». |
+| Garde-fous | 1 demande en cours par utilisateur, 10 par 24 h (`ECOTEAMS_AI_DAILY_LIMIT`), délai maximal 45 s, objectifs privés (404 pour un tiers), `ECOTEAMS_AI_ENABLED=False` pour couper la fonction. |
+
+Configuration : voir la fin de `.env.example`. Modèle par défaut `gemini-flash-lite-latest` (Gemini) ou `claude-opus-5-5` avec
+effort `low` (Claude) ; `ECOTEAMS_AI_MODEL` permet d’en choisir un autre.
+
+#### Métriques d’évaluation
+
+Chaque appel enregistre **latence (ms), tokens en entrée/sortie, modèle** et l’avis de l’utilisateur (`GoalAdvice`,
+visible dans `/django-admin/`). La commande suivante évalue le coach sur des objectifs réels (après `seed_demo_data`) :
+
+```powershell
+python manage.py evaluate_goal_coach --limit 10 --output reports/coach_eval.json
+```
+
+Elle affiche la latence (moyenne, médiane, p95, max), les tokens moyens et un **taux de réussite par critère** d’une
+grille objective : réponse non vide, ≤ 130 mots, en français, cite la progression, au moins 2 actions, aucune promesse
+de points. Le cas d’usage est génératif : la pertinence est donc évaluée **qualitativement** (grille ci-dessus + avis
+« utile / pas utile » des utilisateurs), pas par précision/rappel. Les chiffres obtenus sur votre machine sont à
+reporter ici avant la soutenance :
+
+| Mesure (10 objectifs de démonstration, `gemini-flash-lite-latest`) | Valeur |
+|---|---|
+| Réponses obtenues / échecs API | 10 / 0 |
+| Latence moyenne / médiane / p95 | 1 307 ms / 1 262 ms / 1 499 ms |
+| Tokens moyens (entrée / sortie) | 361 / 159 |
+| Critères réussis (non vide, ≤ 130 mots, français, cite la progression, ≥ 2 actions, aucune promesse) | 100 % sur les 6 critères |
+
+Lecture : le coach répond en ~1,3 s, nettement sous les 45 s de délai maximal, et sans bloquer la requête HTTP grâce à
+l’exécution en arrière-plan. Limite de la grille : elle vérifie la forme et l’ancrage dans les données, pas la finesse du
+conseil, d’où l’avis « utile / pas utile » collecté auprès des utilisateurs. Un modèle Gemini peut répondre 503 lors
+des pics de demande : l’appel est retenté 3 fois, puis un message clair est affiché. Rapport détaillé :
+`reports/coach_eval.json`.
+
+### 14.1 bis Studio d’objectifs IA (`/goals/studio/`)
+
+Fonction phare du module : l’utilisateur décrit son ambition **avec ses mots** (« je veux arrêter de gaspiller la
+nourriture ») ; l’IA lit son **historique réel** (actions validées par catégorie sur 30 jours, série, points, objectifs
+déjà actifs) et propose **3 objectifs SMART de difficulté croissante** (facile / moyen / ambitieux), chacun avec la
+justification chiffrée, un premier pas concret, une catégorie, un mode de suivi, une cible et une échéance. Un clic sur
+**« Créer cet objectif »** crée l’objectif réel (suivi automatique si l’app peut mesurer le geste).
+
+| Élément | Choix |
+|---|---|
+| Sortie structurée | Le modèle doit répondre en **JSON conforme à un schéma** (`goals/studio.py`, `SCHEMA`) : énumérations pour la catégorie, le mode de suivi et la difficulté. |
+| « Ne jamais faire confiance au LLM » | Chaque proposition est validée par le **même `GoalForm`** que celui d’un humain (bornes, dates, cohérence). Seules les propositions valides sont affichées ; la proportion de propositions valides est une métrique. Échéance bornée à 7–90 jours, unité forcée selon le mode. |
+| Sécurité | Texte de l’utilisateur encadré par `<ambition>` et déclaré comme donnée (injection de prompt) ; réponse de l’IA insérée dans la page uniquement avec `textContent` (jamais de HTML → pas de XSS) ; aucune donnée personnelle envoyée ; 10 générations / 24 h ; propositions privées (un tiers ne peut pas en créer). |
+| Traçabilité | Table `GoalProposalRun` (ambition, propositions, créées, latence, tokens, modèle) consultable dans `/django-admin/` : on mesure aussi le **taux d’acceptation**. |
+| UX | Exemples cliquables, compteur de caractères, animation de chargement (squelettes), zone `aria-live`, panneau « Ce que l’IA sait de vous » (transparence), lien vers l’objectif créé. |
+
+Évaluation : `python manage.py evaluate_goal_studio --output reports/studio_eval.json` (8 ambitions types, rien n’est
+écrit en base). Résultats obtenus avec `gemini-flash-lite-latest` :
+
+| Mesure | Valeur |
+|---|---|
+| Réponses obtenues / échecs API | 8 / 0 |
+| Propositions valides pour le formulaire | **24 / 24 (100 %)** |
+| Latence moyenne / médiane / p95 | 1 772 ms / 1 696 ms / 2 242 ms |
+| Tokens moyens (entrée / sortie) | 586 / 344 |
+| 3 propositions, difficulté facile→ambitieux, titres distincts, cibles croissantes, premier pas renseigné | 100 % |
+| Suivi automatique privilégié | 62 % |
+
+Lecture du dernier critère : il n’atteint pas 100 % **à juste titre**. Pour « moins gaspiller », « moins d’eau sous la
+douche » ou « moins de vêtements neufs », l’application ne peut pas mesurer le geste : l’IA choisit alors un suivi
+manuel. Le critère mesure donc une préférence, pas une erreur. Limite : la grille vérifie la forme et la cohérence, pas
+l’intérêt réel des objectifs — d’où le taux d’acceptation (`GoalProposalRun.accepted`) à présenter après usage.
+
+### 14.2 Tests et couverture (modules `goals` et `gamification`)
+
+```powershell
+python manage.py test goals gamification
+coverage run --source=goals,gamification manage.py test goals gamification
+coverage report --omit="*/migrations/*,*/tests.py,*/test_*.py"
+coverage html          # rapport détaillé dans htmlcov/index.html
+```
+
+- **Tests unitaires** : contraintes de base de données, validations de formulaire, propriétés du modèle, registre de
+  points immuable, références uniques, règles des badges, séries, limites des corrections (`goals/test_models.py`,
+  `gamification/tests.py`).
+- **Tests d’intégration** : codes HTTP, contenu des réponses, JSON du coach, filtres/pagination du registre
+  (`goals/tests.py`, `goals/test_coach.py`, `gamification/test_views.py`).
+- **Permissions testées explicitement** : anonyme → redirection vers la connexion, utilisateur simple → 403 sur toutes
+  les URL du back-office, permission « badges » ≠ permission « points », IDOR (404) sur objectifs et conseils d’autrui.
+- **L’API Claude n’est jamais appelée dans les tests** (client factice) : tests rapides, gratuits, déterministes.
+- Couverture des deux applications : **97 %** (hors migrations et fichiers de tests).
+
+### 14.3 Accessibilité (WCAG 2.1 AA)
+
+- Gabarits : `lang="fr"`, lien d’évitement, `<main id="main" tabindex="-1">`, `<nav>` nommées, un seul `<h1>` et pas
+  de saut de niveau de titre, tableaux avec `<caption>` et `<th scope="col">`.
+- Formulaires : chaque champ a un `<label>`, `aria-required`, `aria-describedby` (aide + erreurs), `aria-invalid`
+  après une erreur (`core/forms.py`).
+- ARIA : barres de progression (`role="progressbar"` + valeurs), anneaux (`role="img"` + texte), badges verrouillés
+  annoncés, boutons-icônes nommés, résultat du coach dans une zone `aria-live="polite"`.
+- Contraste : toute la palette dépasse **4,5:1** sur les fonds (minimum mesuré 5,28:1 — bleu sur fond sombre) ;
+  focus visible (`:focus-visible`), `prefers-reduced-motion` respecté.
+- Contrôle automatisé : `goals/test_accessibility.py`. **Audit à faire dans le navigateur** (Chrome → F12 → Lighthouse →
+  Accessibilité, ou extension axe DevTools) sur `/goals/`, `/goals/<id>/`, `/achievements/`, `/admin/badges/` et
+  `/admin/points/`, puis joindre les captures d’écran.
+
+### 14.4 Sécurité et robustesse (rappel pour la soutenance)
+
+CSRF actif sur tous les formulaires (le JS du coach envoie `X-CSRFToken`) ; ORM uniquement (aucun SQL brut) ; mots de
+passe hachés ; secrets dans `.env` ; `DEBUG=False` accepté (`python manage.py check --deploy` ne signale que HSTS et la
+redirection HTTPS, à régler selon l’hébergement) ; pages 403/404/500 personnalisées ; erreurs de l’API IA converties
+en messages clairs, jamais de trace affichée ; contrôle d’accès par groupes/permissions Django (`any_permission_required`).
+
+---
+
+## 15. Intégration, livraison et déploiement (CI/CD)
+
+Pipeline complet (GitHub Actions + Docker + hébergement Render) : voir **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+- `docker compose up --build` : application + PostgreSQL en local (http://localhost:8000).
+- CI (`.github/workflows/ci.yml`) : tests sur SQLite et PostgreSQL, couverture, `check --deploy`, test de fumée de l’image.
+- CD (`.github/workflows/cd.yml`) : à chaque fusion dans `main` → image publiée sur GHCR → déploiement Render → vérification de l’URL publique.
+- Dépendances d’exécution : `requirements-prod.txt` (Docker/CI/hébergement) ; `requirements.txt` reste réservé au poste local XAMPP/MySQL.
+- Sonde de santé : `/healthz/`.
+- Le passage sur PostgreSQL a révélé et corrigé un bug de verrouillage lors de la modération (`actions/services.py`) ; la CI rejoue
+  désormais toute la suite de tests sur PostgreSQL pour éviter ce genre de régression.

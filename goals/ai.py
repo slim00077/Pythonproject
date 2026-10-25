@@ -90,9 +90,9 @@ UNREACHABLE = 'Impossible de joindre le service IA. Vérifiez la connexion du se
 SERVICE_ERROR = 'Le service IA a renvoyé une erreur. Réessayez plus tard.'
 
 
-def make_client():
+def make_client(provider=None):
     """Build the SDK client of the configured provider. Isolated so that tests can replace it."""
-    if settings.ECOTEAMS_AI_PROVIDER == 'gemini':
+    if (provider or settings.ECOTEAMS_AI_PROVIDER) == 'gemini':
         from google import genai
         from google.genai import types
 
@@ -108,7 +108,7 @@ def make_client():
     return anthropic.Anthropic(timeout=settings.ECOTEAMS_AI_TIMEOUT_SECONDS, max_retries=1)
 
 
-def _call_anthropic(client, system, prompt, schema, max_tokens):
+def _call_anthropic(client, system, prompt, schema, max_tokens, model=None):
     import anthropic
 
     output_config = {'effort': settings.ECOTEAMS_AI_EFFORT}
@@ -116,7 +116,7 @@ def _call_anthropic(client, system, prompt, schema, max_tokens):
         output_config['format'] = {'type': 'json_schema', 'schema': schema}
     try:
         response = client.messages.create(
-            model=settings.ECOTEAMS_AI_MODEL,
+            model=model or settings.ECOTEAMS_AI_MODEL,
             max_tokens=max_tokens,
             system=system,
             output_config=output_config,
@@ -146,7 +146,7 @@ def _call_anthropic(client, system, prompt, schema, max_tokens):
     return text, response.model, response.usage.input_tokens, response.usage.output_tokens
 
 
-def _call_gemini(client, system, prompt, schema, max_tokens):
+def _call_gemini(client, system, prompt, schema, max_tokens, model=None):
     from google.genai import errors, types
 
     config = {'system_instruction': system, 'max_output_tokens': max_tokens, 'temperature': 0.7}
@@ -154,7 +154,8 @@ def _call_gemini(client, system, prompt, schema, max_tokens):
         config.update(response_mime_type='application/json', response_json_schema=schema)
     try:
         response = client.models.generate_content(
-            model=settings.ECOTEAMS_AI_MODEL, contents=prompt, config=types.GenerateContentConfig(**config),
+            model=model or settings.ECOTEAMS_AI_MODEL, contents=prompt,
+            config=types.GenerateContentConfig(**config),
         )
     except errors.ClientError as error:
         text = f'{getattr(error, "status", "")} {getattr(error, "message", "")}'.lower()
@@ -181,7 +182,7 @@ def _call_gemini(client, system, prompt, schema, max_tokens):
             getattr(usage, 'prompt_token_count', 0) or 0, getattr(usage, 'candidates_token_count', 0) or 0)
 
 
-def complete(system, prompt, schema=None, client=None, max_tokens=MAX_OUTPUT_TOKENS):
+def complete(system, prompt, schema=None, client=None, max_tokens=MAX_OUTPUT_TOKENS, provider=None, model=None):
     """One LLM round trip on the configured provider. Raises ``BusinessRuleError`` (French message) on failure.
 
     With ``schema`` (a JSON Schema dict) the provider is asked for JSON that follows it; callers must still
@@ -189,19 +190,26 @@ def complete(system, prompt, schema=None, client=None, max_tokens=MAX_OUTPUT_TOK
     """
     if not settings.ECOTEAMS_AI_ENABLED:
         raise BusinessRuleError('Le coach IA est désactivé sur ce serveur.')
+    provider = provider or settings.ECOTEAMS_AI_PROVIDER
+    model = model or settings.ECOTEAMS_AI_MODEL
     try:
-        client = client or make_client()
+        client = client or make_client(provider=provider)
     except Exception:  # missing key or SDK misconfiguration
         logger.exception('AI client could not be created')
         raise BusinessRuleError(MISSING_KEY)
 
-    call = _call_gemini if settings.ECOTEAMS_AI_PROVIDER == 'gemini' else _call_anthropic
+    call = _call_gemini if provider == 'gemini' else _call_anthropic
     started = time.monotonic()
-    text, model, input_tokens, output_tokens = call(client, system, prompt, schema, max_tokens)
+    text, returned_model, input_tokens, output_tokens = call(
+        client, system, prompt, schema, max_tokens, model=model
+    )
     latency_ms = round((time.monotonic() - started) * 1000)
     if not text:
         raise BusinessRuleError('Le coach IA n’a renvoyé aucun conseil. Réessayez.')
-    return Advice(text=text, model=model, latency_ms=latency_ms, input_tokens=input_tokens, output_tokens=output_tokens)
+    return Advice(
+        text=text, model=returned_model, latency_ms=latency_ms,
+        input_tokens=input_tokens, output_tokens=output_tokens,
+    )
 
 
 def generate_advice(goal, client=None):

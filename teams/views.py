@@ -117,7 +117,7 @@ def team_activity_ideas(request, slug):
     except TeamActivityGenerationError as error:
         messages.error(request, str(error))
     else:
-        messages.success(request, 'Les idées d’activités ont été générées par le modèle local.')
+        messages.success(request, 'Les idées d’activités ont été générées avec Gemini.')
         return _render_team_detail(request, team, activity_ideas=activity_ideas)
     return _render_team_detail(request, team)
 

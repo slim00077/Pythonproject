@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.testing import add_member, make_superuser, make_team, make_user
+from core.exceptions import BusinessRuleError
 from notifications.models import Notification
 
 from .ai import TeamActivityGenerationError
@@ -204,34 +205,53 @@ class TeamActivityIdeasTests(TestCase):
 
     @patch(
         'teams.views.generate_team_activity_ideas',
-        side_effect=TeamActivityGenerationError('Impossible de joindre Ollama en local.'),
+        side_effect=TeamActivityGenerationError('La clé API Gemini est manquante.'),
     )
-    def test_local_model_error_is_shown_to_user(self, _generate_ideas):
+    def test_gemini_error_is_shown_to_user(self, _generate_ideas):
         self.client.force_login(self.captain)
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Impossible de joindre Ollama en local.')
+        self.assertContains(response, 'La clé API Gemini est manquante.')
 
-    @patch('teams.ai.urlopen')
-    def test_service_returns_local_model_response(self, mocked_urlopen):
-        from .ai import generate_team_activity_ideas
-
+    @patch('teams.ai.complete')
+    def test_service_requests_structured_json_from_gemini(self, mocked_complete):
         ideas = [{
             'title': 'Vélo',
             'objective': 'Favoriser le vélo.',
             'steps': ['Choisir un trajet.', 'Inviter les membres.', 'Faire le trajet.'],
         } for _ in range(4)]
-        response = MagicMock()
-        response.read.return_value = json.dumps({
-            'response': json.dumps({'ideas': ideas}),
-        }).encode('utf-8')
-        mocked_urlopen.return_value.__enter__.return_value = response
+        mocked_complete.return_value = MagicMock(text=json.dumps({'ideas': ideas}))
+        from .ai import generate_team_activity_ideas
+
         self.assertEqual(
             generate_team_activity_ideas(self.team),
             ideas,
         )
-        request = mocked_urlopen.call_args.args[0]
-        self.assertEqual(request.full_url, 'http://127.0.0.1:11434/api/generate')
+        self.assertEqual(mocked_complete.call_args.kwargs['provider'], 'gemini')
+        self.assertIn('schema', mocked_complete.call_args.kwargs)
+
+    @patch('teams.ai.complete', side_effect=BusinessRuleError('La clé API Gemini est manquante.'))
+    def test_missing_gemini_key_has_clear_error(self, _mocked_complete):
+        from .ai import generate_team_activity_ideas
+
+        with self.assertRaisesRegex(TeamActivityGenerationError, 'clé API Gemini'):
+            generate_team_activity_ideas(self.team)
+
+    @patch('goals.ai._call_gemini', return_value=('{"ok": true}', 'gemini-test', 1, 2))
+    @patch('goals.ai.make_client', return_value=MagicMock())
+    def test_shared_ai_client_can_select_gemini_and_team_model(self, mocked_client, mocked_gemini):
+        from goals.ai import complete
+
+        result = complete(
+            'system',
+            'prompt',
+            provider='gemini',
+            model='team-gemini-test',
+        )
+
+        self.assertEqual(result.text, '{"ok": true}')
+        mocked_client.assert_called_once_with(provider='gemini')
+        self.assertEqual(mocked_gemini.call_args.kwargs['model'], 'team-gemini-test')
 
 
 class TeamCoachTests(TestCase):
@@ -259,8 +279,8 @@ class TeamCoachTests(TestCase):
         self.assertContains(response, 'Organisez un défi vélo collectif.')
         generate_advice.assert_called_once()
 
-    @patch('teams.ai.urlopen')
-    def test_coach_uses_aggregated_team_data_only(self, mocked_urlopen):
+    @patch('teams.ai.complete')
+    def test_coach_uses_aggregated_team_data_only(self, mocked_complete):
         from .ai import generate_team_coach_advice
 
         advice = {
@@ -268,11 +288,7 @@ class TeamCoachTests(TestCase):
             'recommendation': 'Proposez une sortie à vélo.',
             'steps': ['Choisir une date.', 'Préparer le parcours.', 'Inviter les membres.'],
         }
-        response = MagicMock()
-        response.read.return_value = json.dumps({
-            'response': json.dumps(advice),
-        }).encode('utf-8')
-        mocked_urlopen.return_value.__enter__.return_value = response
+        mocked_complete.return_value = MagicMock(text=json.dumps(advice))
         stats = {
             'member_count': 2,
             'active_members': 1,
@@ -287,7 +303,8 @@ class TeamCoachTests(TestCase):
         }
 
         self.assertEqual(generate_team_coach_advice(self.team, stats), advice)
-        request_payload = json.loads(mocked_urlopen.call_args.args[0].data)
-        self.assertNotIn(self.captain.username, request_payload['prompt'])
-        self.assertNotIn(self.team.description, request_payload['prompt'])
-        self.assertIn('"active_members_last_30_days": 1', request_payload['prompt'])
+        prompt = mocked_complete.call_args.args[1]
+        self.assertNotIn(self.captain.username, prompt)
+        self.assertNotIn(self.team.description, prompt)
+        self.assertIn('"active_members_last_30_days": 1', prompt)
+        self.assertEqual(mocked_complete.call_args.kwargs['provider'], 'gemini')

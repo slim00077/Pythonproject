@@ -266,6 +266,9 @@ ECOTEAMS_DEFAULT_ROLE = 'Utilisateur'
 ECOTEAMS_TEAM_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000]
 ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_AGE_DAYS', '30'))
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
+ECOTEAMS_OLLAMA_URL = os.environ.get('ECOTEAMS_OLLAMA_URL', 'http://127.0.0.1:11434')
+ECOTEAMS_OLLAMA_MODEL = os.environ.get('ECOTEAMS_OLLAMA_MODEL', 'phi3:mini')
+ECOTEAMS_OLLAMA_TIMEOUT = int(os.environ.get('ECOTEAMS_OLLAMA_TIMEOUT', '120'))
 
 
 # Coach IA des objectifs (goals/ai.py). Les clés ne sont JAMAIS dans le code : variables d'environnement.

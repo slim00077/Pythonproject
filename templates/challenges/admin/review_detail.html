@@ -1,0 +1,56 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Examiner {{ challenge.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'challenges_admin:review_list' %}">Validation des défis</a> {% icon 'chevron-right' 14 %} {{ challenge.title }}</nav>
+    <h1>{{ challenge.title }}</h1>
+    <div class="row"><span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span><span class="cat">{% icon challenge.category|category_icon 14 %} {{ challenge.get_category_display }}</span><span class="pill tone-muted">{{ challenge.get_difficulty_display }}</span></div>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{{ challenge.get_absolute_url }}">{% icon 'eye' 18 %} Page publique</a>
+    {% if challenge.status != 'archived' %}<a class="btn btn-secondary" href="{% url 'challenges:update' challenge.slug %}">{% icon 'edit' 18 %} Modifier</a>{% endif %}
+  </div>
+</div>
+<div class="split">
+  <div class="card">
+    <h2>Contenu proposé</h2>
+    <p class="prose">{{ challenge.description }}</p>
+    <h3 class="mt-2">Consignes</h3>
+    <p class="prose small">{{ challenge.instructions }}</p>
+    <dl class="kv mt-2">
+      <dt>Créateur</dt><dd>{{ challenge.creator|display_name }}</dd>
+      <dt>Période</dt><dd>{{ challenge.start_date|date:'d/m/Y' }} → {{ challenge.end_date|date:'d/m/Y' }}</dd>
+      <dt>Durée recommandée</dt><dd>{{ challenge.duration_days }} jours</dd>
+      <dt>Actions validées requises</dt><dd>{{ challenge.required_actions }}</dd>
+      <dt>Points proposés</dt><dd>{{ challenge.reward_points }}</dd>
+      <dt>Participants</dt><dd>{{ participant_total }}</dd>
+      {% if challenge.reviewed_by %}<dt>Dernière validation</dt><dd>{{ challenge.reviewed_by|display_name }}</dd>{% endif %}
+    </dl>
+  </div>
+  <aside class="card card-glass">
+    {% if challenge.status == 'draft' or challenge.status == 'pending' %}
+      <h2>{% icon 'shield-check' %} Décision</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include 'partials/form_fields.html' %}
+        <div class="stack-sm mt-3">
+          <button class="btn btn-success btn-block" type="submit" name="decision" value="approve">{% icon 'check-circle' 18 %} Publier le défi</button>
+          {% if challenge.status == 'pending' %}<button class="btn btn-danger btn-block" type="submit" name="decision" value="reject">{% icon 'x-circle' 18 %} Renvoyer en brouillon</button>{% endif %}
+        </div>
+      </form>
+    {% else %}
+      <h2>{% icon 'sliders' %} Statut du défi</h2>
+      <p class="text-2 small">Clôturez un défi terminé ou archivez-le pour le retirer des listes. Les récompenses déjà attribuées restent au registre.</p>
+      <form method="post" class="stack-sm">
+        {% csrf_token %}
+        <input type="hidden" name="reward_points" value="{{ challenge.reward_points }}">
+        {% if challenge.status == 'active' %}<button class="btn btn-secondary btn-block" type="submit" name="decision" value="completed">{% icon 'flag' 18 %} Marquer comme terminé</button>{% endif %}
+        {% if challenge.status == 'completed' %}<button class="btn btn-secondary btn-block" type="submit" name="decision" value="active">{% icon 'refresh' 18 %} Rouvrir le défi</button>{% endif %}
+        {% if challenge.status != 'archived' %}<button class="btn btn-danger btn-block" type="submit" name="decision" value="archived" data-confirm="Archiver ce défi ?">{% icon 'inbox' 18 %} Archiver</button>{% endif %}
+      </form>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

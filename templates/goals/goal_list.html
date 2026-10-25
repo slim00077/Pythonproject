@@ -1,0 +1,54 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Mes objectifs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'target' 14 %} Module 4 · Objectifs</span>
+    <h1>Mes objectifs écologiques</h1>
+    <p class="page-sub">Fixez-vous des objectifs personnels. En suivi automatique, la progression se met à jour à chaque action validée ou point gagné.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'gamification:achievements' %}">{% icon 'award' 18 %} Mes badges</a>
+    <a class="btn btn-primary" href="{% url 'goals:create' %}">{% icon 'plus' 18 %} Nouvel objectif</a>
+  </div>
+</div>
+<nav class="tabs" aria-label="Filtrer par statut">
+  {% for value, label in statuses %}
+    <a class="tab {% if status == value %}active{% endif %}" href="?status={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>
+  {% endfor %}
+  <a class="tab {% if status == 'all' %}active{% endif %}" href="?status=all">Tous <span class="count">{{ total }}</span></a>
+</nav>
+{% if goals %}
+  <div class="grid grid-3">
+    {% for goal in goals %}
+      <article class="card card-hover entity-card">
+        <div class="entity-top">
+          {% if goal.status == 'completed' %}{% progress_ring 100 84 8 '' 'gold' %}{% else %}{% progress_ring goal.progress_percent 84 8 '' %}{% endif %}
+          <div class="grow">
+            <a class="entity-title" href="{{ goal.get_absolute_url }}">{{ goal.title }}</a>
+            <div class="row mt-1">
+              <span class="pill tone-{% if goal.is_overdue %}warning{% else %}{{ goal.status|status_tone }}{% endif %}">{% if goal.is_overdue %}En retard{% else %}{{ goal.get_status_display }}{% endif %}</span>
+              {% if goal.is_automatic %}<span class="pill tone-info">{% icon 'refresh' 12 %} Auto</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% if goal.description %}<p class="entity-desc">{{ goal.description }}</p>{% endif %}
+        <div class="entity-meta">
+          <span>{% icon 'target' 14 %} {{ goal.current_progress }} / {{ goal.target_value }} {{ goal.unit }}</span>
+          {% if goal.category %}<span>{% icon goal.category|category_icon 14 %} {{ goal.get_category_display }}</span>{% endif %}
+        </div>
+        <div class="entity-foot">
+          <span class="small muted">{% icon 'calendar' 14 %} Échéance : {{ goal.deadline|date:'d/m/Y' }}{% if goal.status == 'active' and goal.days_left >= 0 %} · J-{{ goal.days_left }}{% endif %}</span>
+          <a class="btn btn-ghost btn-sm" href="{{ goal.get_absolute_url }}">Suivre {% icon 'arrow-right' 14 %}</a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    {% url 'goals:create' as create_url %}
+    {% include 'partials/empty.html' with icon='target' title='Aucun objectif dans cette liste' text='Exemple : « 10 trajets à vélo ce mois-ci » ou « 300 points avant la fin du trimestre ».' cta_url=create_url cta_label='Créer un objectif' %}
+  </div>
+{% endif %}
+{% endblock %}

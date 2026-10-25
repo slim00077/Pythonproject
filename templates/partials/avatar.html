@@ -1,0 +1,1 @@
+{% load eco_tags %}<span class="avatar{% if size %} avatar-{{ size }}{% endif %}" aria-hidden="true">{% if u.avatar %}<img src="{{ u.avatar.url }}" alt="">{% else %}{{ u|initials }}{% endif %}</span>

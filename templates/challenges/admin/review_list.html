@@ -1,0 +1,40 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Validation des défis{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'shield-check' 14 %} Administration</span>
+    <h1>Validation des défis</h1>
+    <p class="page-sub">Relisez les propositions, ajustez les points de récompense et publiez-les. Aucun défi n’est publié sans cette étape.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'challenges:create' %}">{% icon 'plus' 18 %} Créer un défi</a></div>
+</div>
+<nav class="tabs" aria-label="Filtrer par statut">
+  <a class="tab {% if tab == 'pending' %}active{% endif %}" href="?tab=pending">En attente <span class="count">{{ counts.pending }}</span></a>
+  <a class="tab {% if tab == 'active' %}active{% endif %}" href="?tab=active">Actifs <span class="count">{{ counts.active }}</span></a>
+  <a class="tab {% if tab == 'drafts' %}active{% endif %}" href="?tab=drafts">Brouillons <span class="count">{{ counts.drafts }}</span></a>
+  <a class="tab {% if tab == 'closed' %}active{% endif %}" href="?tab=closed">Terminés / archivés <span class="count">{{ counts.closed }}</span></a>
+</nav>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Défi</th><th>Créateur</th><th>Période</th><th class="num">Points proposés</th><th class="num">Participants</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for challenge in page %}
+        <tr>
+          <td><strong>{{ challenge.title }}</strong><div class="small muted">{{ challenge.get_category_display }} · {{ challenge.get_difficulty_display }}</div></td>
+          <td>{{ challenge.creator|display_name }}</td>
+          <td class="nowrap small">{{ challenge.start_date|date:'d/m/Y' }} → {{ challenge.end_date|date:'d/m/Y' }}</td>
+          <td class="num">{{ challenge.reward_points }}</td>
+          <td class="num">{{ challenge.participant_total }}</td>
+          <td><span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span></td>
+          <td class="actions-cell"><a class="btn btn-secondary btn-sm" href="{% url 'challenges_admin:review_detail' challenge.slug %}">{% icon 'eye' 14 %} Examiner</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include 'partials/empty.html' with icon='check-circle' title='Rien à traiter ici' text='Aucun défi dans cette catégorie.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

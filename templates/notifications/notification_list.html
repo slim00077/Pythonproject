@@ -1,0 +1,56 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'bell' 14 %} Centre de notifications</span>
+    <h1>Notifications</h1>
+    <p class="page-sub">Équipe, défis, validations, badges, objectifs et événements : tout ce qui vous concerne.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'notifications:preferences' %}">{% icon 'sliders' 18 %} Préférences</a>
+    {% if unread_notifications_count %}
+      <form method="post" action="{% url 'notifications:read_all' %}" class="inline-form">{% csrf_token %}
+        <button class="btn btn-secondary" type="submit">{% icon 'check' 18 %} Tout marquer comme lu</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="row mb-2">
+  <nav class="tabs mb-0">
+    <a class="tab {% if show != 'unread' %}active{% endif %}" href="{% querystring show='all' page=None %}">Toutes</a>
+    <a class="tab {% if show == 'unread' %}active{% endif %}" href="{% querystring show='unread' page=None %}">Non lues <span class="count">{{ unread_notifications_count }}</span></a>
+  </nav>
+  <div class="chips">
+    <a class="chip {% if not kind %}active{% endif %}" href="{% querystring kind=None page=None %}">Tous les types</a>
+    {% for value, label in kinds %}<a class="chip {% if kind == value %}active{% endif %}" href="{% querystring kind=value page=None %}">{{ label }}</a>{% endfor %}
+  </div>
+</div>
+<div class="card">
+  {% if page.object_list %}
+    <ul class="list">
+      {% for notification in page %}
+        <li class="list-item">
+          <span class="list-icon" {% if not notification.is_read %}style="background:rgba(183,255,74,.14);color:var(--lime)"{% endif %}>{% icon notification.icon 18 %}</span>
+          <a class="grow" href="{% url 'notifications:detail' notification.pk %}" style="color:inherit">
+            <span class="title">{{ notification.title }}</span>
+            <span class="sub">{{ notification.message|truncatechars:140 }}</span>
+            <span class="sub" style="display:block">{{ notification.get_kind_display }} · {{ notification.created_at|naturaltime }}</span>
+          </a>
+          {% if not notification.is_read %}
+            <form method="post" action="{% url 'notifications:read' notification.pk %}" class="inline-form">{% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="icon-btn" type="submit" aria-label="Marquer comme lue">{% icon 'check' 16 %}</button></form>
+          {% endif %}
+          <form method="post" action="{% url 'notifications:delete' notification.pk %}" class="inline-form">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="icon-btn" type="submit" aria-label="Supprimer la notification">{% icon 'trash' 16 %}</button></form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% include 'partials/empty.html' with icon='inbox' title='Aucune notification' text='Vous êtes à jour ! Les nouvelles notifications apparaîtront ici.' %}
+  {% endif %}
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

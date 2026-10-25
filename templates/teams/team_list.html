@@ -1,0 +1,76 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Équipes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'users' 14 %} Module 1 · Équipes</span>
+    <h1>Trouvez votre équipe</h1>
+    <p class="page-sub">Une seule équipe par participant : choisissez celle qui partage vos priorités écologiques, ou créez la vôtre et devenez capitaine.</p>
+  </div>
+  <div class="page-actions">
+    {% if my_membership %}
+      <a class="btn btn-secondary" href="{{ my_membership.team.get_absolute_url }}">{% icon 'users' 18 %} Mon équipe : {{ my_membership.team.name }}</a>
+    {% else %}
+      <a class="btn btn-primary" href="{% url 'teams:create' %}">{% icon 'plus' 18 %} Créer une équipe</a>
+    {% endif %}
+  </div>
+</div>
+
+<form class="filters" method="get" data-autosubmit>
+  {% include 'partials/field.html' with field=form.q %}
+  {% include 'partials/field.html' with field=form.focus_area %}
+  {% include 'partials/field.html' with field=form.sort %}
+  {% include 'partials/field.html' with field=form.open_only %}
+  <button class="btn btn-secondary" type="submit">{% icon 'search' 16 %} Rechercher</button>
+</form>
+
+{% if page.object_list %}
+  <div class="grid grid-3">
+    {% for team in page %}
+      <article class="card card-hover entity-card">
+        <div class="entity-top">
+          {% include 'partials/team_logo.html' with t=team size='lg' %}
+          <div class="grow">
+            <a class="entity-title" href="{{ team.get_absolute_url }}">{{ team.name }}</a>
+            {% if team.motto %}<p class="small muted mb-0" style="font-style:italic">« {{ team.motto }} »</p>{% endif %}
+            <div class="row mt-1">
+              <span class="cat">{% icon team.focus_area|category_icon 14 %} {{ team.get_focus_area_display }}</span>
+              {% if team.rank and team.points > 0 %}<span class="pill tone-gold">{% icon 'trophy' 12 %} {{ team.rank|ordinal }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        <p class="entity-desc">{{ team.description }}</p>
+        <div>
+          <div class="progress-meta mt-0 mb-1"><span>{{ team.member_total }} / {{ team.max_members }} membres</span><span>Capitaine : {{ team.captain|display_name }}</span></div>
+          <div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{% percent team.member_total team.max_members %}"></div></div>
+        </div>
+        <div class="entity-foot">
+          <span><span class="big-number">{{ team.points|intcomma }}</span> <span class="muted small">points</span></span>
+          {% if my_membership and my_membership.team_id == team.pk %}
+            <span class="pill tone-lime">{% icon 'check' 12 %} Votre équipe</span>
+          {% elif team.status != 'active' %}
+            <span class="pill tone-muted">{{ team.get_status_display }}</span>
+          {% elif not team.is_open %}
+            <span class="pill tone-muted">{% icon 'lock' 12 %} Fermée</span>
+          {% elif team.member_total >= team.max_members %}
+            <span class="pill tone-warning">Complète</span>
+          {% elif not my_membership %}
+            <form method="post" action="{% url 'teams:join' team.slug %}" class="inline-form">{% csrf_token %}
+              <button class="btn btn-primary btn-sm" type="submit">{% icon 'user-plus' 14 %} Rejoindre</button>
+            </form>
+          {% else %}
+            <a class="btn btn-ghost btn-sm" href="{{ team.get_absolute_url }}">Voir</a>
+          {% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% include 'partials/pagination.html' %}
+{% else %}
+  <div class="card">
+    {% url 'teams:create' as create_url %}
+    {% include 'partials/empty.html' with icon='users' title='Aucune équipe ne correspond à votre recherche' text='Modifiez vos filtres ou lancez votre propre équipe.' cta_url=create_url cta_label='Créer une équipe' %}
+  </div>
+{% endif %}
+{% endblock %}

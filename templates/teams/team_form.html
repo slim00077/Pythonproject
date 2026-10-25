@@ -1,0 +1,22 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if is_create %}Créer une équipe{% else %}Modifier {{ team.name }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'teams:list' %}">Équipes</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouvelle équipe{% else %}<a href="{{ team.get_absolute_url }}">{{ team.name }}</a> {% icon 'chevron-right' 14 %} Modifier{% endif %}</nav>
+    <h1>{% if is_create %}Créer une équipe{% else %}Modifier l’équipe{% endif %}</h1>
+    <p class="page-sub">{% if is_create %}Vous deviendrez automatiquement le capitaine de cette équipe.{% else %}Seul le capitaine peut modifier ces informations.{% endif %}</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% if team %}{{ team.get_absolute_url }}{% else %}{% url 'teams:list' %}{% endif %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} {% if is_create %}Créer l’équipe{% else %}Enregistrer{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

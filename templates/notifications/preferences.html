@@ -1,0 +1,26 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Préférences de notification{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'notifications:list' %}">Notifications</a> {% icon 'chevron-right' 14 %} Préférences</nav>
+    <h1>Préférences de notification</h1>
+    <p class="page-sub">Choisissez les notifications que vous souhaitez recevoir dans l’application. Les messages système importants sont toujours envoyés.</p>
+  </div>
+</div>
+<div class="card card-glass form-card" style="max-width:640px">
+  <form method="post">
+    {% csrf_token %}
+    <div class="stack-sm">
+      {% for field in form %}
+        <label class="check-tile">{{ field }} <span>{{ field.label }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'notifications:list' %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

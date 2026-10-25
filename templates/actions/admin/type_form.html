@@ -1,0 +1,23 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if action_type %}Modifier {{ action_type.name }}{% else %}Nouvelle action{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'actions_admin:type_list' %}">Catalogue</a> {% icon 'chevron-right' 14 %} {% if action_type %}{{ action_type.name }}{% else %}Nouvelle action{% endif %}</nav>
+    <h1>{% if action_type %}Modifier l’action{% else %}Nouvelle action du catalogue{% endif %}</h1>
+    <p class="page-sub">Modifier les points ne change pas les points déjà attribués : le registre est immuable.</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  <div class="alert alert-warning mb-2">{% icon 'alert-triangle' %}<p>N’inventez pas de facteur CO₂ : renseignez une valeur issue d’une source documentée (ex. base carbone publique) et indiquez-la dans « Source du facteur ». Les résultats sont toujours présentés comme des estimations.</p></div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'actions_admin:type_list' %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

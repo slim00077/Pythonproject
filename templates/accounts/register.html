@@ -1,0 +1,28 @@
+{% extends 'accounts/auth_base.html' %}
+{% load eco_tags %}
+{% block title %}Créer un compte{% endblock %}
+{% block auth_content %}
+<span class="eyebrow">{% icon 'sprout' 14 %} Inscription</span>
+<h1>Rejoignez EcoTeams</h1>
+<p class="text-2">Créez votre compte en quelques secondes. Vous pourrez ensuite rejoindre une équipe.</p>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger form-errors">{% icon 'alert-triangle' %}<div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
+  {% endif %}
+  <div class="form-grid two">
+    {% include 'partials/field.html' with field=form.first_name %}
+    {% include 'partials/field.html' with field=form.last_name %}
+  </div>
+  <div class="form-grid mt-2">
+    {% include 'partials/field.html' with field=form.username %}
+    {% include 'partials/field.html' with field=form.email %}
+    {% include 'partials/field.html' with field=form.organization_type %}
+    {% include 'partials/field.html' with field=form.password1 %}
+    {% include 'partials/field.html' with field=form.password2 %}
+  </div>
+  <button class="btn btn-primary btn-lg btn-block mt-3" type="submit"><span class="spinner"></span>{% icon 'rocket' 18 %} Créer mon compte</button>
+  <p class="small muted mt-2 mb-0">{% icon 'shield-check' 14 %} Votre compte reçoit automatiquement le rôle « Utilisateur ». Les droits d’administration ne peuvent être attribués que par un administrateur.</p>
+</form>
+<p class="auth-switch">Déjà inscrit·e ? <a href="{% url 'accounts:login' %}">Se connecter</a></p>
+{% endblock %}

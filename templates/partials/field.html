@@ -1,0 +1,15 @@
+{% load eco_tags %}{% with wt=field.widget_type %}
+<div class="field field-{{ wt }}{% if field.errors %} has-error{% endif %}{% if full %} field-full{% endif %}">
+  {% if wt == 'checkbox' %}
+    {{ field }}
+    <label class="field-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {% else %}
+    <label class="field-label"{% if wt != 'checkboxselectmultiple' and wt != 'radioselect' %} for="{{ field.id_for_label }}"{% endif %}>{{ field.label }}{% if field.field.required %}<span class="req" aria-hidden="true">*</span>{% endif %}</label>
+    {{ field }}
+  {% endif %}
+  {% if field.help_text %}<span class="field-help" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>{% endif %}
+  {% if field.errors %}
+    <ul class="field-errors">{% for error in field.errors %}<li>{% icon 'alert-triangle' 14 %} {{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+{% endwith %}

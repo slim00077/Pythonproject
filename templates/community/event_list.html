@@ -1,0 +1,71 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Événements et campagnes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'calendar' 14 %} Module 5 · Communauté</span>
+    <h1>Événements et campagnes</h1>
+    <p class="page-sub">Nettoyages, ateliers, conférences, campagnes de sensibilisation : retrouvez la communauté sur le terrain ou en ligne.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'community:mine' %}">{% icon 'list' 18 %} Mes événements</a>
+    <a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a>
+  </div>
+</div>
+
+{% if campaigns %}
+  <div class="grid grid-3 mb-3">
+    {% for campaign in campaigns %}
+      <a class="card card-glow card-hover" href="{{ campaign.get_absolute_url }}" style="color:inherit">
+        <span class="eyebrow">{% icon 'megaphone' 14 %} Campagne en cours</span>
+        <h3>{{ campaign.title }}</h3>
+        <div class="progress mt-2"><div class="progress-bar" style="width:0" data-width="{{ campaign.time_progress }}"></div></div>
+        <div class="progress-meta"><span>Jusqu’au {{ campaign.end_at|date:'d/m/Y' }}</span><span>{{ campaign.participant_total }} participant{{ campaign.participant_total|pluralize }}</span></div>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<form class="filters" method="get" data-autosubmit>
+  {% include 'partials/field.html' with field=form.q %}
+  {% include 'partials/field.html' with field=form.kind %}
+  {% include 'partials/field.html' with field=form.category %}
+  {% include 'partials/field.html' with field=form.format %}
+  {% include 'partials/field.html' with field=form.when %}
+  <button class="btn btn-secondary" type="submit">{% icon 'search' 16 %} Filtrer</button>
+</form>
+
+{% if page.object_list %}
+  <div class="grid grid-3">
+    {% for event in page %}
+      <article class="card card-hover entity-card">
+        <div class="entity-top">
+          <span class="date-tile"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d">{{ event.start_at|date:'d' }}</span></span>
+          <div class="grow">
+            <div class="row mb-1"><span class="pill tone-{% if event.kind == 'campaign' %}info{% else %}lime{% endif %}">{{ event.get_kind_display }}</span>{% if event.status == 'completed' %}<span class="pill tone-muted">Terminé</span>{% endif %}</div>
+            <a class="entity-title" href="{{ event.get_absolute_url }}">{{ event.title }}</a>
+          </div>
+        </div>
+        <p class="entity-desc">{{ event.description }}</p>
+        <div class="entity-meta">
+          <span>{% icon 'clock' 14 %} {{ event.start_at|date:'H:i' }}</span>
+          <span>{% if event.format == 'online' %}{% icon 'globe' 14 %} En ligne{% else %}{% icon 'map-pin' 14 %} {{ event.location|truncatechars:30 }}{% endif %}</span>
+          <span>{% icon event.category|category_icon 14 %} {{ event.get_category_display }}</span>
+        </div>
+        <div class="entity-foot">
+          <span class="small muted">{% icon 'users' 14 %} {{ event.participant_total }}{% if event.capacity %} / {{ event.capacity }}{% endif %} inscrit{{ event.participant_total|pluralize }}</span>
+          {% if event.pk in joined %}<span class="pill tone-success">{% icon 'check' 12 %} Inscrit·e</span>
+          {% else %}<a class="btn btn-secondary btn-sm" href="{{ event.get_absolute_url }}">Détails {% icon 'arrow-right' 14 %}</a>{% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% include 'partials/pagination.html' %}
+{% else %}
+  <div class="card">
+    {% url 'community:create' as create_url %}
+    {% include 'partials/empty.html' with icon='calendar' title='Aucun événement pour ces critères' text='Proposez un événement : il sera publié après validation.' cta_url=create_url cta_label='Proposer un événement' %}
+  </div>
+{% endif %}
+{% endblock %}

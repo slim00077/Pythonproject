@@ -1,0 +1,52 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Badges et points{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'award' 14 %} Module 4 · Gamification</span>
+    <h1>Badges et points</h1>
+    <p class="page-sub">Vos points proviennent exclusivement du registre : actions validées, défis réussis et éventuelles corrections administratives tracées.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% url 'analytics:history' %}?tab=points">{% icon 'history' 18 %} Détail du registre</a></div>
+</div>
+<div class="grid grid-4 mb-3">
+  <div class="card card-glow stat"><span class="stat-icon">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points au registre</div><div class="stat-value" data-count-to="{{ points }}">{{ points }}</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'award' 22 %}</span><div><div class="stat-label">Badges obtenus</div><div class="stat-value">{{ earned_total }}<small>/{{ rows|length }}</small></div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'flame' 22 %}</span><div><div class="stat-label">Série en cours</div><div class="stat-value">{{ streak.current }} <small>jour{{ streak.current|pluralize }}</small></div><div class="stat-hint">jours consécutifs avec une action validée</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'trophy' 22 %}</span><div><div class="stat-label">Meilleure série</div><div class="stat-value">{{ streak.best }} <small>jour{{ streak.best|pluralize }}</small></div></div></div>
+</div>
+<div class="split">
+  <div>
+    <h2 class="mb-2">Collection de badges</h2>
+    {% if rows %}
+      <div class="medal-grid">
+        {% for row in rows %}
+          <div class="card medal-card {% if not row.award %}locked{% endif %}">
+            <div class="medal {{ row.badge.tone }}"><span>{% if row.award %}{% icon row.badge.icon 30 %}{% else %}{% icon 'lock' 26 %}{% endif %}</span></div>
+            <h3 class="mb-1">{{ row.badge.name }}</h3>
+            <p class="small text-2">{{ row.badge.description }}</p>
+            {% if row.award %}
+              <span class="pill tone-success">{% icon 'check' 12 %} Obtenu le {{ row.award.awarded_at|date:'d/m/Y' }}</span>
+            {% else %}
+              <div class="progress"><div class="progress-bar" style="width:0" data-width="{{ row.progress }}"></div></div>
+              <div class="progress-meta"><span>{{ row.badge.get_rule_display|truncatechars:34 }}</span><span>{{ row.label }}</span></div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card">{% include 'partials/empty.html' with icon='award' title='Aucun badge configuré' text='L’administration n’a pas encore défini de badges.' %}</div>
+    {% endif %}
+  </div>
+  <aside class="card">
+    <div class="card-head"><h3>{% icon 'pie-chart' %} Origine de mes points</h3></div>
+    <ul class="list">
+      {% for label, total in by_reason %}
+        <li class="list-item"><span class="grow">{{ label }}</span><strong class="{% if total < 0 %}text-danger{% else %}text-lime{% endif %}">{{ total|signed }}</strong></li>
+      {% endfor %}
+    </ul>
+    <div class="alert alert-info mt-2">{% icon 'shield' %}<p>Les points ne peuvent pas être modifiés par les participants. Toute correction passe par une écriture administrative motivée.</p></div>
+  </aside>
+</div>
+{% endblock %}

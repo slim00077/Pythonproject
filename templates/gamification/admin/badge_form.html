@@ -1,0 +1,22 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if badge %}Modifier {{ badge.name }}{% else %}Nouveau badge{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'gamification:badge_list' %}">Badges</a> {% icon 'chevron-right' 14 %} {% if badge %}{{ badge.name }}{% else %}Nouveau badge{% endif %}</nav>
+    <h1>{% if badge %}Modifier le badge{% else %}Créer un badge{% endif %}</h1>
+    <p class="page-sub">Pour « Rang de l’équipe », le badge est obtenu lorsque l’équipe du participant est classée à ce rang ou mieux (ex. seuil 1 = 1re place).</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'gamification:badge_list' %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if group %}Modifier le rôle{% else %}Nouveau rôle{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'accounts:role_list' %}">Rôles et permissions</a> {% icon 'chevron-right' 14 %} {% if group %}{{ group.name }}{% else %}Nouveau rôle{% endif %}</nav>
+    <h1>{% if group %}Modifier « {{ group.name }} »{% else %}Créer un rôle personnalisé{% endif %}</h1>
+    <p class="page-sub">Exemples : Modérateur, Organisateur de défis, Responsable d’équipe… Les droits d’administrateur (superutilisateur) ne peuvent pas être attribués depuis ce formulaire.</p>
+  </div>
+</div>
+<form method="post" novalidate class="stack">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{% icon 'alert-triangle' %}<div>{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div></div>{% endif %}
+  <div class="card card-glass form-card" style="max-width:none">
+    <div class="form-grid">
+      {% include 'partials/field.html' with field=form.name %}
+      {% include 'partials/field.html' with field=form.description full=True %}
+    </div>
+    {% if is_system %}<div class="alert alert-info mt-2">{% icon 'lock' %}<p>Ce rôle est attribué automatiquement à tous les inscrits : son nom et ses permissions sont verrouillés pour éviter de donner des privilèges à tout le monde.</p></div>{% endif %}
+  </div>
+  {% if not is_system %}
+    <div class="card">
+      <div class="card-head">
+        <div><h2>{% icon 'key' %} Permissions</h2><p class="card-sub">Les permissions « clé » donnent accès aux écrans du back-office.</p></div>
+        <input class="input" type="search" placeholder="Filtrer les permissions…" data-filter-input="#permission-list" style="max-width:280px" aria-label="Filtrer les permissions">
+      </div>
+      {% if form.permissions.errors %}<ul class="field-errors mb-2">{% for e in form.permissions.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      <div id="permission-list" class="stack-sm">
+        {% for app_label, permissions in permission_groups %}
+          <h3 class="mt-2 mb-0">{{ app_label }}</h3>
+          <div class="grid grid-3" style="gap:8px">
+            {% for permission in permissions %}
+              <label class="check-tile" data-filter-item>
+                <input type="checkbox" name="permissions" value="{{ permission.id }}" {% if permission.checked %}checked{% endif %}>
+                <span>{{ permission.label }}</span>
+                {% if permission.key %}<span class="pill tone-lime tag-key">clé</span>{% endif %}
+              </label>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  <div class="form-actions" style="border:0;margin-top:0">
+    <a class="btn btn-ghost" href="{% url 'accounts:role_list' %}">Annuler</a>
+    <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer le rôle</button>
+  </div>
+</form>
+{% endblock %}

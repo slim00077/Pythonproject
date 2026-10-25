@@ -1,0 +1,113 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Administration{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'gauge' 14 %} Administration</span>
+    <h1>Vue d’ensemble de la plateforme</h1>
+    <p class="page-sub">Toutes les statistiques sont calculées à partir des enregistrements de la base de données.</p>
+  </div>
+  <div class="page-actions">
+    {% if nav.view_reports %}<a class="btn btn-secondary" href="{% url 'analytics:reports' %}">{% icon 'pie-chart' 18 %} Rapports</a>{% endif %}
+    {% if nav.moderate_actions %}<a class="btn btn-primary" href="{% url 'actions_admin:moderation_list' %}">{% icon 'clipboard-check' 18 %} Modérer ({{ o.pending_submissions }})</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-4 mb-3">
+  <div class="card card-glow stat"><span class="stat-icon">{% icon 'users' 22 %}</span><div><div class="stat-label">Utilisateurs actifs</div><div class="stat-value" data-count-to="{{ o.total_users }}">{{ o.total_users }}</div><div class="stat-hint">{{ o.team_participation_rate }} % membres d’une équipe</div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'trophy' 22 %}</span><div><div class="stat-label">Équipes</div><div class="stat-value">{{ o.total_teams }}</div><div class="stat-hint">{{ o.users_in_team }} participant{{ o.users_in_team|pluralize }} en équipe</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'flag' 22 %}</span><div><div class="stat-label">Défis actifs</div><div class="stat-value">{{ o.active_challenges }}</div><div class="stat-hint">{{ o.pending_challenges }} en attente de validation</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points attribués</div><div class="stat-value">{{ o.points_awarded|intcomma }}</div><div class="stat-hint">solde net {{ o.points_net|intcomma }}</div></div></div>
+</div>
+<div class="grid grid-4 mb-3">
+  <div class="card stat"><span class="stat-icon gold">{% icon 'clock' 22 %}</span><div><div class="stat-label">Déclarations en attente</div><div class="stat-value">{{ o.pending_submissions }}</div></div></div>
+  <div class="card stat"><span class="stat-icon">{% icon 'check-circle' 22 %}</span><div><div class="stat-label">Actions validées</div><div class="stat-value">{{ o.approved_submissions }}</div></div></div>
+  <div class="card stat"><span class="stat-icon" style="background:rgba(255,107,107,.1);color:var(--danger)">{% icon 'x-circle' 22 %}</span><div><div class="stat-label">Actions refusées</div><div class="stat-value">{{ o.rejected_submissions }}</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'cloud' 22 %}</span><div><div class="stat-label">CO₂ évité</div><div class="stat-value">{{ o.co2|floatformat:0|intcomma }} <small>kg</small></div><div class="stat-hint">estimation</div></div></div>
+</div>
+
+<div class="split mb-3">
+  <div class="card">
+    <div class="card-head"><div><h2>{% icon 'trending-up' %} Points attribués par semaine</h2><p class="card-sub">8 dernières semaines</p></div></div>
+    {{ weekly_points_chart|json_script:'admin-weekly-points' }}
+    <div class="chart" data-chart="bar" data-source="admin-weekly-points" data-unit="pts" aria-label="Points attribués par semaine"></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'pie-chart' %} Déclarations</h2></div>
+    {{ status_chart|json_script:'admin-status' }}
+    <div class="chart" style="min-height:0" data-chart="donut" data-source="admin-status" data-center-label="déclarations" aria-label="Répartition des déclarations par statut"></div>
+  </div>
+</div>
+
+<div class="grid grid-2 mb-3">
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'layers' %} Actions validées par catégorie</h2></div>
+    {{ category_chart|json_script:'admin-categories' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-source="admin-categories" aria-label="Actions validées par catégorie"></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'user-plus' %} Nouvelles inscriptions</h2><span class="small muted">par semaine</span></div>
+    {{ weekly_users_chart|json_script:'admin-weekly-users' }}
+    <div class="chart" data-chart="line" data-source="admin-weekly-users" aria-label="Nouvelles inscriptions par semaine"></div>
+  </div>
+</div>
+
+<div class="grid grid-3 mb-3">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'clipboard-check' %} File de modération</h3>{% if nav.moderate_actions %}<a class="card-link" href="{% url 'actions_admin:moderation_list' %}">Tout voir {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+    <ul class="list">
+      {% for submission in o.moderation_queue %}
+        <li class="list-item"><span class="list-icon">{% icon submission.action_type.category|category_icon 16 %}</span>
+          <span class="grow">{% if nav.moderate_actions %}<a class="title" href="{% url 'actions_admin:moderation_detail' submission.pk %}">{{ submission.action_type.name|truncatechars:30 }}</a>{% else %}<span class="title">{{ submission.action_type.name|truncatechars:30 }}</span>{% endif %}<span class="sub">{{ submission.user|display_name }} · {{ submission.created_at|naturaltime }}</span></span></li>
+      {% empty %}
+        <li class="muted small">{% icon 'check-circle' 14 %} Aucune déclaration en attente.</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'activity' %} Participation</h3></div>
+    <dl class="kv">
+      <dt>Participants à des défis</dt><dd>{{ o.challenge_participants }}</dd>
+      <dt>Défis réussis</dt><dd>{{ o.challenge_completions }}</dd>
+      <dt>Inscriptions aux événements</dt><dd>{{ o.event_participations }}</dd>
+      <dt>Événements à venir</dt><dd>{{ o.upcoming_events }}</dd>
+      <dt>Événements à valider</dt><dd>{{ o.pending_events }}</dd>
+    </dl>
+    <div class="mt-2"><div class="progress-meta mt-0 mb-1"><span>Participants membres d’une équipe</span><span>{{ o.team_participation_rate }} %</span></div>
+      <div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{{ o.team_participation_rate }}"></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'zap' %} Raccourcis</h3></div>
+    <div class="stack-sm">
+      {% if nav.is_admin %}
+        <a class="btn btn-secondary btn-block" href="{% url 'accounts:role_list' %}">{% icon 'shield' 18 %} Rôles et permissions</a>
+        <a class="btn btn-secondary btn-block" href="{% url 'accounts:user_list' %}">{% icon 'users' 18 %} Utilisateurs</a>
+      {% endif %}
+      {% if nav.review_challenges %}<a class="btn btn-secondary btn-block" href="{% url 'challenges_admin:review_list' %}">{% icon 'flag' 18 %} Défis à valider ({{ o.pending_challenges }})</a>{% endif %}
+      {% if nav.review_events %}<a class="btn btn-secondary btn-block" href="{% url 'community_admin:review_list' %}">{% icon 'megaphone' 18 %} Événements à valider ({{ o.pending_events }})</a>{% endif %}
+      {% if nav.manage_badges %}<a class="btn btn-secondary btn-block" href="{% url 'gamification:badge_list' %}">{% icon 'medal' 18 %} Badges</a>{% endif %}
+      {% if nav.adjust_points %}<a class="btn btn-secondary btn-block" href="{% url 'gamification:ledger' %}">{% icon 'zap' 18 %} Registre des points</a>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'history' %} Activité récente sur la plateforme</h3></div>
+    <ul class="timeline">
+      {% for activity in o.activities %}
+        <li class="timeline-item"><span class="timeline-dot">{% icon activity.icon 16 %}</span><div class="timeline-body small">{{ activity.description }}<time>{{ activity.actor|display_name }} · {{ activity.created_at|naturaltime }}</time></div></li>
+      {% empty %}<li class="muted small">Aucune activité.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'trophy' %} Top équipes</h3><a class="card-link" href="{% url 'analytics:leaderboard' %}">Classement {% icon 'arrow-right' 14 %}</a></div>
+    <ul class="list">
+      {% for team in o.top_teams %}
+        <li class="list-item"><span class="rank-badge {% if team.points > 0 and team.rank <= 3 %}r{{ team.rank }}{% endif %}">{{ team.rank }}</span><a class="grow title" href="{{ team.get_absolute_url }}">{{ team.name }}</a><strong class="text-lime">{{ team.points|intcomma }}</strong></li>
+      {% empty %}<li class="muted small">Aucune équipe.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

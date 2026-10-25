@@ -1,0 +1,84 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Rapports d’engagement{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'pie-chart' 14 %} Administration</span>
+    <h1>Rapports d’engagement communautaire</h1>
+    <p class="page-sub">Valeurs vérifiées (registre, déclarations validées) et estimations CO₂ (facteurs configurés) sont distinguées.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'analytics:reports_export' %}?period={{ period }}">{% icon 'download' 18 %} Exporter en CSV</a>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label class="field-label" for="rp">Période</label>
+    <select class="input" id="rp" name="period">{% for value, label in periods.items %}<option value="{{ value }}" {% if period == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Appliquer</button>
+</form>
+<div class="grid grid-4 mb-3">
+  <div class="card stat"><span class="stat-icon">{% icon 'check-circle' 22 %}</span><div><div class="stat-label">Actions validées</div><div class="stat-value">{{ r.approved_actions }}</div><div class="stat-hint"><span class="pill tone-success">vérifié</span></div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points des actions</div><div class="stat-value">{{ r.points|intcomma }}</div><div class="stat-hint"><span class="pill tone-success">vérifié</span></div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'cloud' 22 %}</span><div><div class="stat-label">CO₂ évité</div><div class="stat-value">{{ r.co2|floatformat:1|intcomma }} <small>kg</small></div><div class="stat-hint"><span class="pill tone-warning">estimation</span></div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'user-plus' 22 %}</span><div><div class="stat-label">Nouveaux inscrits</div><div class="stat-value">{{ r.new_users }}</div><div class="stat-hint">{{ r.event_participations }} inscription{{ r.event_participations|pluralize }} à des événements</div></div></div>
+</div>
+<div class="split mb-3">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Catégorie</th><th class="num">Actions validées</th><th class="num">Points</th><th class="num">CO₂ estimé (kg)</th></tr></thead>
+      <tbody>
+        {% for row in r.categories %}
+          <tr><td><span class="cat">{% icon row.category|category_icon 14 %} {{ row.label }}</span></td><td class="num">{{ row.count }}</td><td class="num">{{ row.points|intcomma }}</td><td class="num">{{ row.co2|floatformat:1 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'cloud' %} CO₂ estimé par catégorie</h3></div>
+    {{ category_chart|json_script:'report-co2' }}
+    <div class="chart" style="min-height:0" data-chart="donut" data-source="report-co2" data-unit="kg" data-center-label="kg (estim.)" aria-label="CO₂ estimé par catégorie"></div>
+  </div>
+</div>
+<h2>{% icon 'trophy' %} Équipes</h2>
+<div class="table-wrap mb-3">
+  <table class="table">
+    <thead><tr><th>Rang</th><th>Équipe</th><th class="num">Points</th><th class="num">Membres</th><th class="num">Actions validées</th><th class="num">Défis réussis</th><th class="num">CO₂ estimé (kg)</th></tr></thead>
+    <tbody>
+      {% for team in r.teams %}
+        <tr><td><span class="rank-badge">{{ team.rank }}</span></td><td><a href="{{ team.get_absolute_url }}">{{ team.name }}</a></td><td class="num">{{ team.points|intcomma }}</td><td class="num">{{ team.member_total }}</td><td class="num">{{ team.approved_actions }}</td><td class="num">{{ team.completed_challenges }}</td><td class="num">{{ team.co2_estimate|floatformat:1 }}</td></tr>
+      {% empty %}<tr><td colspan="7" class="muted">Aucune équipe.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="grid grid-2">
+  <div>
+    <h2>{% icon 'flag' %} Taux de réussite des défis</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Défi</th><th class="num">Participants</th><th class="num">Réussites</th><th style="min-width:120px">Taux</th></tr></thead>
+        <tbody>
+          {% for row in r.challenges %}
+            <tr><td><a href="{{ row.challenge.get_absolute_url }}">{{ row.challenge.title|truncatechars:34 }}</a></td><td class="num">{{ row.participants }}</td><td class="num">{{ row.completed }}</td>
+              <td><div class="progress"><div class="progress-bar" style="width:0" data-width="{{ row.rate }}"></div></div><div class="progress-meta"><span></span><span>{{ row.rate }} %</span></div></td></tr>
+          {% empty %}<tr><td colspan="4" class="muted">Aucun défi publié.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div>
+    <h2>{% icon 'calendar' %} Événements</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Événement</th><th>Date</th><th class="num">Inscrits</th><th style="min-width:120px">Remplissage</th></tr></thead>
+        <tbody>
+          {% for row in r.events %}
+            <tr><td><a href="{{ row.event.get_absolute_url }}">{{ row.event.title|truncatechars:30 }}</a></td><td class="nowrap small">{{ row.event.start_at|date:'d/m/Y' }}</td><td class="num">{{ row.participants }}</td>
+              <td>{% if row.fill is not None %}<div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{{ row.fill }}"></div></div><div class="progress-meta"><span></span><span>{{ row.fill }} %</span></div>{% else %}<span class="muted small">sans limite</span>{% endif %}</td></tr>
+          {% empty %}<tr><td colspan="4" class="muted">Aucun événement publié.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

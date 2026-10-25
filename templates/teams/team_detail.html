@@ -1,0 +1,119 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}{{ team.name }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="{% url 'teams:list' %}">Équipes</a> {% icon 'chevron-right' 14 %} {{ team.name }}</nav>
+<section class="card card-glow detail-hero">
+  <div class="detail-hero-inner">
+    {% include 'partials/team_logo.html' with t=team size='lg' %}
+    <div>
+      <div class="row mb-1">
+        <span class="cat">{% icon team.focus_area|category_icon 14 %} {{ team.get_focus_area_display }}</span>
+        <span class="pill tone-{{ team.status|status_tone }}">{{ team.get_status_display }}</span>
+        {% if not team.is_open %}<span class="pill tone-muted">{% icon 'lock' 12 %} Recrutement fermé</span>{% endif %}
+        {% if is_member %}<span class="pill tone-lime">{% icon 'check' 12 %} Votre équipe</span>{% endif %}
+      </div>
+      <h1>{{ team.name }}</h1>
+      {% if team.motto %}<p class="motto">« {{ team.motto }} »</p>{% endif %}
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong data-count-to="{{ stats.points }}">{{ stats.points }}</strong><span>points</span></div>
+      <div class="hero-stat"><strong>{% if stats.rank %}{{ stats.rank|ordinal }}{% else %}—{% endif %}</strong><span>rang</span></div>
+      <div class="hero-stat"><strong>{{ stats.member_count }}/{{ team.max_members }}</strong><span>membres</span></div>
+    </div>
+  </div>
+  <div class="row mt-3" style="position:relative;z-index:1">
+    {% if can_join %}
+      <form method="post" action="{% url 'teams:join' team.slug %}" class="inline-form">{% csrf_token %}
+        <button class="btn btn-primary" type="submit">{% icon 'user-plus' 18 %} Rejoindre l’équipe</button></form>
+    {% elif not my_membership and not team.accepts_members %}
+      <span class="pill tone-muted">Cette équipe n’accepte pas de nouveaux membres pour le moment</span>
+    {% endif %}
+    {% if is_member and not is_captain %}
+      <form method="post" action="{% url 'teams:leave' team.slug %}" class="inline-form" data-confirm="Quitter l’équipe {{ team.name }} ?">{% csrf_token %}
+        <button class="btn btn-ghost" type="submit">{% icon 'log-out' 18 %} Quitter l’équipe</button></form>
+    {% endif %}
+    {% if can_manage %}
+      <a class="btn btn-secondary" href="{% url 'teams:update' team.slug %}">{% icon 'edit' 18 %} Modifier</a>
+      <a class="btn btn-danger" href="{% url 'teams:delete' team.slug %}">{% icon 'trash' 18 %} Supprimer</a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="grid grid-4 mb-3">
+  <div class="card stat"><span class="stat-icon">{% icon 'leaf' 22 %}</span><div><div class="stat-label">Actions validées</div><div class="stat-value">{{ stats.approved_actions }}</div><div class="stat-hint">créditées à l’équipe</div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'flag' 22 %}</span><div><div class="stat-label">Défis réussis</div><div class="stat-value">{{ stats.completed_challenges }}</div><div class="stat-hint">{{ stats.challenge_completion_rate }} % des participations</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'cloud' 22 %}</span><div><div class="stat-label">CO₂ évité</div><div class="stat-value">{{ stats.co2|floatformat:1 }} <small>kg</small></div><div class="stat-hint">estimation, facteurs configurés</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'activity' 22 %}</span><div><div class="stat-label">Membres actifs (30 j)</div><div class="stat-value">{{ stats.active_members }}<small>/{{ stats.member_count }}</small></div><div class="stat-hint">{{ stats.participation_rate }} % de participation</div></div></div>
+</div>
+
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'trending-up' %} Performance historique</h2><p class="card-sub">Points enregistrés au registre, par semaine (8 dernières semaines)</p></div></div>
+      {{ stats.weekly_points|json_script:'team-weekly' }}
+      <div class="chart" data-chart="line" data-source="team-weekly" data-unit="pts" aria-label="Points de l’équipe par semaine"></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'pie-chart' %} Actions par catégorie</h3></div>
+        {{ category_chart|json_script:'team-categories' }}
+        <div class="chart" style="min-height:0" data-chart="hbar" data-source="team-categories" aria-label="Actions validées par catégorie"
+             data-empty="Aucune action validée pour l’instant."></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'info' %} À propos</h3></div>
+        <p class="prose small">{{ team.description }}</p>
+        <dl class="kv">
+          <dt>Capitaine</dt><dd><a href="{% url 'accounts:public_profile' team.captain.username %}">{{ team.captain|display_name }}</a></dd>
+          <dt>Créée le</dt><dd>{{ team.created_at|date:'d/m/Y' }}</dd>
+          <dt>Défis rejoints</dt><dd>{{ stats.joined_challenges }}</dd>
+          <dt>Inscriptions aux événements</dt><dd>{{ stats.event_participations }}</dd>
+        </dl>
+        {% if stats.goal_progress is not None %}
+          <div class="mt-2"><div class="progress-meta mt-0 mb-1"><span>Objectif collectif</span><span>{{ stats.points|intcomma }} / {{ team.goal_points|intcomma }} pts</span></div>
+            <div class="progress progress-lg"><div class="progress-bar gold" style="width:0" data-width="{{ stats.goal_progress }}"></div></div></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'activity' %} Activité récente de l’équipe</h2></div>
+      <ul class="timeline">
+        {% for activity in stats.activities %}
+          <li class="timeline-item"><span class="timeline-dot">{% icon activity.icon 16 %}</span>
+            <div class="timeline-body">{{ activity.description }}<time datetime="{{ activity.created_at|date:'c' }}">{{ activity.created_at|naturaltime }}</time></div></li>
+        {% empty %}
+          <li>{% include 'partials/empty.html' with icon='activity' title='Pas encore d’activité' text='Les actions validées, défis et arrivées de membres apparaîtront ici.' %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <aside class="card">
+    <div class="card-head"><h2>{% icon 'users' %} Membres</h2><span class="pill tone-muted">{{ stats.member_count }}</span></div>
+    <ul class="list">
+      {% for membership in stats.members %}
+        <li class="list-item">
+          {% include 'partials/avatar.html' with u=membership.user size='sm' %}
+          <span class="grow">
+            <a class="title" href="{% url 'accounts:public_profile' membership.user.username %}">{{ membership.user|display_name }}</a>
+            <span class="sub">{% if membership.role == 'captain' %}{% icon 'crown' 12 %} Capitaine{% else %}Membre{% endif %} · {{ membership.contribution|intcomma }} pts</span>
+          </span>
+          {% if can_manage and membership.role != 'captain' %}
+            <div class="dropdown" data-dropdown>
+              <button class="icon-btn" type="button" data-dropdown-trigger aria-haspopup="true" aria-expanded="false" aria-label="Gérer {{ membership.user|display_name }}">{% icon 'more' 18 %}</button>
+              <div class="dropdown-menu" style="width:240px">
+                <form method="post" action="{% url 'teams:captain_transfer' team.slug membership.user_id %}" data-confirm="Transférer le rôle de capitaine à {{ membership.user|display_name }} ?">{% csrf_token %}
+                  <button class="dropdown-item" type="submit">{% icon 'crown' 16 %} Nommer capitaine</button></form>
+                <form method="post" action="{% url 'teams:member_remove' team.slug membership.user_id %}" data-confirm="Retirer {{ membership.user|display_name }} de l’équipe ?">{% csrf_token %}
+                  <button class="dropdown-item text-danger" type="submit">{% icon 'user-minus' 16 %} Retirer de l’équipe</button></form>
+              </div>
+            </div>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if is_captain %}<p class="small muted mt-2 mb-0">{% icon 'info' 14 %} En tant que capitaine, transférez votre rôle avant de quitter l’équipe.</p>{% endif %}
+  </aside>
+</div>
+{% endblock %}

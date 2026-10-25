@@ -1,0 +1,46 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Modération des actions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'clipboard-check' 14 %} Administration</span>
+    <h1>Modération des actions</h1>
+    <p class="page-sub">Validez ou refusez les déclarations. La validation inscrit automatiquement les points au registre, une seule fois, via le service central de score.</p>
+  </div>
+  <div class="page-actions">{% if nav.manage_action_types %}<a class="btn btn-secondary" href="{% url 'actions_admin:type_list' %}">{% icon 'layers' 18 %} Catalogue</a>{% endif %}</div>
+</div>
+<nav class="tabs" aria-label="Filtrer par statut">
+  {% for value, label in statuses %}
+    <a class="tab {% if tab == value %}active{% endif %}" href="?tab={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>
+  {% endfor %}
+</nav>
+<form class="filters" method="get" data-autosubmit>
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div class="field"><label class="field-label" for="mq">Rechercher</label><input class="input" id="mq" type="search" name="q" value="{{ query }}" placeholder="Utilisateur, description…"></div>
+  <div class="field"><label class="field-label" for="mc">Catégorie</label>
+    <select class="input" id="mc" name="category"><option value="">Toutes</option>{% for value, label in categories %}<option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Filtrer</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Déclaration</th><th>Auteur</th><th>Réalisée le</th><th>Preuve</th><th class="num">Points</th><th>{% if tab == 'pending' %}Déclarée{% else %}Modérée{% endif %}</th><th></th></tr></thead>
+    <tbody>
+      {% for submission in page %}
+        <tr>
+          <td><div class="who"><span class="list-icon">{% icon submission.action_type.category|category_icon 18 %}</span><span><strong>{{ submission.action_type.name }}</strong><span>{{ submission.description|truncatechars:70 }}</span></span></div></td>
+          <td>{{ submission.user|display_name }}</td>
+          <td class="nowrap">{{ submission.performed_on|date:'d/m/Y' }}</td>
+          <td>{% if submission.evidence %}<span class="pill tone-info">{% icon 'image' 12 %} Photo</span>{% else %}<span class="muted small">—</span>{% endif %}</td>
+          <td class="num">{% if submission.status == 'approved' %}+{{ submission.points_awarded }}{% else %}{{ submission.action_type.points }}{% endif %}</td>
+          <td class="nowrap small">{% if tab == 'pending' %}{{ submission.created_at|naturaltime }}{% else %}{{ submission.reviewed_at|date:'d/m/Y' }}{% endif %}</td>
+          <td class="actions-cell"><a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-ghost{% endif %} btn-sm" href="{% url 'actions_admin:moderation_detail' submission.pk %}">{% icon 'eye' 14 %} {% if tab == 'pending' %}Examiner{% else %}Voir{% endif %}</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include 'partials/empty.html' with icon='check-circle' title='File de modération vide' text='Toutes les déclarations ont été traitées. Beau travail !' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

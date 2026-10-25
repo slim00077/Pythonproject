@@ -1,0 +1,81 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Modérer la déclaration n° {{ submission.pk }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'actions_admin:moderation_list' %}">Modération</a> {% icon 'chevron-right' 14 %} Déclaration n° {{ submission.pk }}</nav>
+    <h1>{{ submission.action_type.name }}</h1>
+    <div class="row"><span class="pill tone-{{ submission.status|status_tone }}">{{ submission.get_status_display }}</span><span class="cat">{% icon submission.action_type.category|category_icon 14 %} {{ submission.action_type.get_category_display }}</span></div>
+  </div>
+</div>
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <div class="who mb-2">{% include 'partials/avatar.html' with u=submission.user %}<span><strong>{{ submission.user|display_name }}</strong><span>@{{ submission.user.username }}{% if submission.team %} · {{ submission.team.name }}{% endif %}</span></span></div>
+      <h3>Description de l’auteur</h3>
+      <p class="prose">{{ submission.description }}</p>
+      {% if submission.evidence %}
+        <h3 class="mt-2">{% icon 'image' 18 %} Photo justificative</h3>
+        <img class="evidence-img" src="{% url 'actions:evidence' submission.pk %}" alt="Photo justificative">
+      {% elif submission.action_type.requires_evidence %}
+        <div class="alert alert-warning mt-2">{% icon 'alert-triangle' %}<p>Cette action exige normalement une photo, mais aucune n’est jointe.</p></div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'clipboard-check' %} Points de contrôle</h3></div>
+      <ul class="list">
+        <li class="list-item">{% icon 'calendar' 18 %}<span class="grow">Réalisée le {{ submission.performed_on|date:'d/m/Y' }} (déclarée le {{ submission.created_at|date:'d/m/Y' }})</span></li>
+        <li class="list-item">{% icon 'layers' 18 %}<span class="grow">{{ same_day }} autre{{ same_day|pluralize }} déclaration{{ same_day|pluralize }} du même auteur ce jour-là</span>{% if same_day > 3 %}<span class="pill tone-warning">À vérifier</span>{% endif %}</li>
+        {% if submission.quantity %}<li class="list-item">{% icon 'gauge' 18 %}<span class="grow">Quantité déclarée : {{ submission.quantity|floatformat:-2 }} {{ submission.action_type.unit }}</span></li>{% endif %}
+        {% if submission.challenge %}<li class="list-item">{% icon 'flag' 18 %}<span class="grow">Liée au défi « {{ submission.challenge.title }} »</span></li>{% endif %}
+        <li class="list-item">{% icon 'cloud' 18 %}<span class="grow">CO₂ évité estimé : {% if estimate is not None %}≈ {{ estimate|floatformat:2 }} kg{% else %}non calculable (pas de facteur ou de quantité){% endif %}</span></li>
+      </ul>
+      {% if submission.action_type.instructions %}<div class="alert alert-info mt-2">{% icon 'info' %}<p><strong>Consignes de validation :</strong> {{ submission.action_type.instructions }}</p></div>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'history' %} Déclarations récentes de cet auteur</h3></div>
+      <ul class="list">
+        {% for other in history %}
+          <li class="list-item"><span class="grow"><span class="title">{{ other.action_type.name }}</span><span class="sub">{{ other.performed_on|date:'d/m/Y' }}</span></span><span class="pill tone-{{ other.status|status_tone }}">{{ other.get_status_display }}</span></li>
+        {% empty %}<li class="muted">Première déclaration de cet auteur.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  <aside class="stack">
+    <div class="card card-glass">
+      <h2>{% icon 'shield-check' %} Décision</h2>
+      {% if is_own %}
+        <div class="alert alert-warning">{% icon 'lock' %}<p>Vous ne pouvez pas modérer vos propres déclarations.</p></div>
+      {% elif submission.status == 'pending' %}
+        <p class="text-2 small">Valider attribuera <strong class="text-lime">+{{ submission.action_type.points }} points</strong> (valeur fixe du catalogue).</p>
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% include 'partials/form_fields.html' %}
+          <div class="stack-sm mt-3">
+            <button class="btn btn-success btn-block" type="submit" name="decision" value="approve">{% icon 'check-circle' 18 %} Valider l’action</button>
+            <button class="btn btn-danger btn-block" type="submit" name="decision" value="reject">{% icon 'x-circle' 18 %} Refuser (motif obligatoire)</button>
+          </div>
+        </form>
+      {% elif submission.status == 'approved' %}
+        <p class="text-2 small">Correction exceptionnelle : annuler la validation crée une écriture négative de {{ submission.points_awarded }} points au registre. Cette opération est tracée.</p>
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% include 'partials/form_fields.html' %}
+          <button class="btn btn-danger btn-block mt-3" type="submit" name="decision" value="revoke" data-confirm="Annuler cette validation et retirer les points ?">{% icon 'refresh' 18 %} Annuler la validation</button>
+        </form>
+      {% else %}
+        <p class="text-2">Cette déclaration a été refusée{% if submission.moderation_notes %} : {{ submission.moderation_notes }}{% endif %}.</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'history' %} Historique de modération</h3></div>
+      <ul class="timeline">
+        {% for log in logs %}
+          <li class="timeline-item"><span class="timeline-dot">{% icon 'shield' 16 %}</span><div class="timeline-body"><strong>{{ log.get_decision_display }}</strong>{% if log.points_delta %} ({{ log.points_delta|signed }} pts){% endif %} par {{ log.moderator|display_name }}{% if log.notes %} — {{ log.notes }}{% endif %}<time>{{ log.created_at|date:'d/m/Y H:i' }}</time></div></li>
+        {% empty %}<li class="muted">Aucune décision.</li>{% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+{% endblock %}

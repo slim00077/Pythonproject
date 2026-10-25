@@ -1,0 +1,16 @@
+[project]
+name = "ecoteams"
+version = "1.0.0"
+description = "EcoTeams — compétition écologique entre équipes (projet Django, Framework Python pour le Web)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django==5.2.18",
+    "pillow==13.0.0",
+    "psycopg[binary]==3.3.6",
+    "python-dotenv==1.2.4",
+]
+
+[tool.uv]
+# Application Django (pas un paquet à publier) : uv gère seulement l'environnement.
+package = false

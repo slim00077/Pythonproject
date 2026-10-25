@@ -1,0 +1,16 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{{ notification.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="{% url 'notifications:list' %}">Notifications</a> {% icon 'chevron-right' 14 %} {{ notification.get_kind_display }}</nav>
+<div class="card card-glow" style="max-width:720px">
+  <div class="row mb-2"><span class="stat-icon">{% icon notification.icon 22 %}</span><div><span class="pill tone-info">{{ notification.get_kind_display }}</span><div class="small muted mt-1">{{ notification.created_at|date:'l d F Y à H:i' }}</div></div></div>
+  <h1>{{ notification.title }}</h1>
+  <p class="prose">{{ notification.message|default:'—' }}</p>
+  <div class="form-actions">
+    <form method="post" action="{% url 'notifications:delete' notification.pk %}" class="inline-form">{% csrf_token %}
+      <button class="btn btn-ghost" type="submit">{% icon 'trash' 18 %} Supprimer</button></form>
+    {% if notification.link %}<a class="btn btn-primary" href="{{ notification.link }}">{% icon 'arrow-right' 18 %} Voir le détail</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

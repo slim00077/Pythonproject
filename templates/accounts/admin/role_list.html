@@ -1,0 +1,62 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Rôles et permissions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'shield' 14 %} Administration</span>
+    <h1>Rôles et permissions</h1>
+    <p class="page-sub">Seul un superutilisateur actif peut consulter cette page, créer des rôles et attribuer des permissions. Créer un rôle n’ajoute jamais son créateur à ce rôle.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'accounts:user_list' %}">{% icon 'users' 18 %} Gérer les utilisateurs</a>
+    <a class="btn btn-primary" href="{% url 'accounts:role_create' %}">{% icon 'plus' 18 %} Nouveau rôle</a>
+  </div>
+</div>
+
+<div class="grid grid-2 mb-3">
+  <div class="card card-glow">
+    <div class="row between">
+      <div class="stat">
+        <span class="stat-icon gold">{% icon 'crown' 22 %}</span>
+        <div><div class="stat-label">Niveau d’accès intégré</div><div class="stat-value" style="font-size:1.3rem">Administrateur</div>
+          <div class="stat-hint">Superutilisateur Django — accès complet, géré par <span class="mono">createsuperuser</span>.</div></div>
+      </div>
+      <span class="pill tone-gold">{{ superusers|length }} compte{{ superusers|length|pluralize }}</span>
+    </div>
+    <div class="chips mt-2">{% for admin in superusers %}<span class="chip">{% icon 'user' 14 %} {{ admin.username }}</span>{% endfor %}</div>
+  </div>
+  <div class="card">
+    <div class="stat">
+      <span class="stat-icon cyan">{% icon 'info' 22 %}</span>
+      <div><div class="stat-label">Comment ça marche</div>
+        <p class="text-2 mb-0 small">Les rôles reposent sur les groupes et permissions de Django. Les permissions marquées « clé » ouvrent l’accès aux écrans de modération, de validation ou de rapports. Toutes les vérifications sont faites côté serveur.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Rôle</th><th>Description</th><th class="num">Membres</th><th class="num">Permissions</th><th></th></tr></thead>
+    <tbody>
+      {% for group in roles %}
+        <tr>
+          <td><strong>{{ group.name }}</strong>{% if group.role.is_system %} <span class="pill tone-info">Par défaut</span>{% endif %}</td>
+          <td class="text-2 small">{{ group.role.description|default:'—' }}</td>
+          <td class="num">{{ group.member_total }}</td>
+          <td class="num">{{ group.permission_total }}</td>
+          <td class="actions-cell">
+            <a class="btn btn-ghost btn-sm" href="{% url 'accounts:role_update' group.pk %}">{% icon 'edit' 14 %} Modifier</a>
+            {% if not group.role.is_system %}
+              <a class="btn btn-ghost btn-sm" href="{% url 'accounts:role_members' group.pk %}">{% icon 'user-plus' 14 %} Membres</a>
+              <a class="btn btn-danger btn-sm" href="{% url 'accounts:role_delete' group.pk %}">{% icon 'trash' 14 %}<span class="sr-only">Supprimer</span></a>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include 'partials/empty.html' with icon='shield' title='Aucun rôle' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

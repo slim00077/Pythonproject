@@ -1,0 +1,28 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Membres du rôle {{ group.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'accounts:role_list' %}">Rôles et permissions</a> {% icon 'chevron-right' 14 %} {{ group.name }}</nav>
+    <h1>Membres du rôle « {{ group.name }} »</h1>
+    <p class="page-sub">Cochez les utilisateurs qui doivent recevoir ce rôle. Ils seront notifiés du changement.</p>
+  </div>
+</div>
+<form method="post" class="card">
+  {% csrf_token %}
+  <div class="row mb-2">
+    <input class="input grow" type="search" placeholder="Rechercher un utilisateur…" data-filter-input="#member-list" aria-label="Rechercher un utilisateur">
+    <button class="btn btn-ghost btn-sm" type="button" data-check-all="#member-list">Tout cocher / décocher</button>
+  </div>
+  <div id="member-list" class="grid grid-3" style="gap:8px">
+    {% for choice in form.members %}
+      <label class="check-tile" data-filter-item>{{ choice.tag }} <span>{{ choice.choice_label }}</span></label>
+    {% endfor %}
+  </div>
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{% url 'accounts:role_list' %}">Annuler</a>
+    <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer les membres</button>
+  </div>
+</form>
+{% endblock %}

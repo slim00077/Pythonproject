@@ -1,0 +1,38 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Mes événements{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'community:list' %}">Événements</a> {% icon 'chevron-right' 14 %} Mes événements</nav>
+    <h1>Mes événements</h1>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Proposer un événement</a></div>
+</div>
+<div class="split-even split">
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'calendar-check' %} Mes inscriptions</h2></div>
+    <ul class="list">
+      {% for p in participations %}
+        <li class="list-item"><span class="date-tile"><span class="m">{{ p.event.start_at|date:'M' }}</span><span class="d">{{ p.event.start_at|date:'d' }}</span></span>
+          <span class="grow"><a class="title" href="{{ p.event.get_absolute_url }}">{{ p.event.title }}</a><span class="sub">{{ p.event.start_at|date:'H:i' }} · {% if p.event.format == 'online' %}En ligne{% else %}{{ p.event.location }}{% endif %}</span></span>
+          <span class="pill tone-{{ p.event.status|status_tone }}">{{ p.event.get_status_display }}</span></li>
+      {% empty %}
+        {% url 'community:list' as list_url %}
+        <li>{% include 'partials/empty.html' with icon='calendar' title='Aucune inscription' cta_url=list_url cta_label='Voir les événements' cta_icon='search' %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'megaphone' %} Mes propositions</h2></div>
+    <ul class="list">
+      {% for event in organized %}
+        <li class="list-item"><span class="grow"><a class="title" href="{{ event.get_absolute_url }}">{{ event.title }}</a><span class="sub">{{ event.start_at|date:'d/m/Y' }} · {{ event.participant_total }} inscrit{{ event.participant_total|pluralize }}</span></span>
+          <span class="pill tone-{{ event.status|status_tone }}">{{ event.get_status_display }}</span></li>
+      {% empty %}
+        <li class="muted">Vous n’avez proposé aucun événement.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{{ submission.action_type.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% if is_owner %}{% url 'actions:list' %}{% else %}{% url 'actions_admin:moderation_list' %}{% endif %}">{% if is_owner %}Mes actions{% else %}Modération{% endif %}</a> {% icon 'chevron-right' 14 %} Déclaration n° {{ submission.pk }}</nav>
+    <h1>{{ submission.action_type.name }}</h1>
+    <div class="row"><span class="pill tone-{{ submission.status|status_tone }}">{{ submission.get_status_display }}</span><span class="cat">{% icon submission.action_type.category|category_icon 14 %} {{ submission.action_type.get_category_display }}</span></div>
+  </div>
+  <div class="page-actions">
+    {% if is_owner and submission.is_editable %}
+      <a class="btn btn-secondary" href="{% url 'actions:update' submission.pk %}">{% icon 'edit' 18 %} Modifier</a>
+      <a class="btn btn-danger" href="{% url 'actions:delete' submission.pk %}">{% icon 'trash' 18 %} Supprimer</a>
+    {% elif not is_owner %}
+      <a class="btn btn-primary" href="{% url 'actions_admin:moderation_detail' submission.pk %}">{% icon 'shield-check' 18 %} Modérer</a>
+    {% endif %}
+  </div>
+</div>
+{% if submission.status == 'approved' %}
+  <div class="alert alert-success mb-3">{% icon 'check-circle' %}<p><strong>Action validée</strong> le {{ submission.reviewed_at|date:'d/m/Y' }} : +{{ submission.points_awarded }} points inscrits au registre{% if submission.team %} et crédités à l’équipe « {{ submission.team.name }} »{% endif %}. Une action validée ne peut plus être modifiée.</p></div>
+{% elif submission.status == 'rejected' %}
+  <div class="alert alert-danger mb-3">{% icon 'x-circle' %}<p><strong>Action refusée.</strong> {{ submission.moderation_notes }}</p></div>
+{% else %}
+  <div class="alert alert-info mb-3">{% icon 'clock' %}<p><strong>En attente de validation.</strong> Vous pouvez encore modifier ou supprimer cette déclaration. Aucun point n’est attribué avant la validation.</p></div>
+{% endif %}
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <h2>Description</h2>
+      <p class="prose">{{ submission.description }}</p>
+      {% if submission.evidence %}
+        <h3 class="mt-2">{% icon 'image' 18 %} Photo justificative</h3>
+        <img class="evidence-img" src="{% url 'actions:evidence' submission.pk %}" alt="Photo justificative de l’action {{ submission.action_type.name }}">
+        <p class="small muted mt-1">{% icon 'lock' 12 %} Visible uniquement par vous et par la modération.</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'history' %} Historique de modération</h2></div>
+      <ul class="timeline">
+        {% for log in logs %}
+          <li class="timeline-item"><span class="timeline-dot">{% if log.decision == 'approved' %}{% icon 'check' 16 %}{% else %}{% icon 'x' 16 %}{% endif %}</span>
+            <div class="timeline-body"><strong>{{ log.get_decision_display }}</strong>{% if log.points_delta %} ({{ log.points_delta|signed }} pts){% endif %}{% if log.notes %} — {{ log.notes }}{% endif %}
+              <time>{{ log.created_at|date:'d/m/Y H:i' }}{% if not is_owner and log.moderator %} · {{ log.moderator|display_name }}{% endif %}</time></div></li>
+        {% empty %}
+          <li class="muted">Aucune décision pour l’instant.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <aside class="card card-glass">
+    <dl class="kv">
+      {% if not is_owner %}<dt>Auteur</dt><dd>{{ submission.user|display_name }}</dd>{% endif %}
+      <dt>Réalisée le</dt><dd>{{ submission.performed_on|date:'d/m/Y' }}</dd>
+      <dt>Déclarée le</dt><dd>{{ submission.created_at|date:'d/m/Y H:i' }}</dd>
+      {% if submission.quantity %}<dt>Quantité</dt><dd>{{ submission.quantity|floatformat:-2 }} {{ submission.action_type.unit }}</dd>{% endif %}
+      <dt>Défi associé</dt><dd>{% if submission.challenge %}<a href="{{ submission.challenge.get_absolute_url }}">{{ submission.challenge.title }}</a>{% else %}—{% endif %}</dd>
+      <dt>Points</dt><dd>{% if submission.status == 'approved' %}<strong class="text-lime">+{{ submission.points_awarded }}</strong>{% else %}{{ submission.action_type.points }} (si validée){% endif %}</dd>
+      <dt>CO₂ évité</dt><dd>{% if submission.co2_estimate is not None %}≈ {{ submission.co2_estimate|floatformat:2 }} kg{% else %}non estimé{% endif %}</dd>
+    </dl>
+    <p class="estimate-note mt-2">{% icon 'info' 12 %} Estimation calculée avec le facteur configuré pour cette action{% if submission.action_type.factor_source %} ({{ submission.action_type.factor_source }}){% endif %}. Ce n’est pas une mesure vérifiée.</p>
+  </aside>
+</div>
+{% endblock %}

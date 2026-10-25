@@ -1,0 +1,45 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if is_create %}Déclarer une action{% else %}Modifier ma déclaration{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'actions:list' %}">Mes actions</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouvelle déclaration{% else %}Modifier{% endif %}</nav>
+    <h1>{% if is_create %}Déclarer une action écologique{% else %}Modifier ma déclaration{% endif %}</h1>
+    <p class="page-sub">Soyez précis : une description claire et une photo justificative accélèrent la validation.</p>
+  </div>
+</div>
+<div class="split">
+  <div class="card card-glass">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include 'partials/form_fields.html' %}
+      <div class="form-actions">
+        <a class="btn btn-ghost" href="{% if submission %}{{ submission.get_absolute_url }}{% else %}{% url 'actions:list' %}{% endif %}">Annuler</a>
+        <button class="btn btn-primary" type="submit"><span class="spinner"></span>{% icon 'send' 18 %} {% if is_create %}Envoyer pour validation{% else %}Enregistrer{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  <aside class="stack">
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'clipboard-check' %} Comment se passe la validation ?</h3></div>
+      <ol class="steps-list small">
+        <li>Vous déclarez votre action (une seule fois par type et par jour).</li>
+        <li>Un modérateur vérifie la description et la preuve éventuelle.</li>
+        <li>Si l’action est validée, ses points fixes sont inscrits au registre et crédités à votre équipe.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'layers' %} Barème</h3></div>
+      <ul class="list">
+        {% for action_type in action_types %}
+          <li class="list-item"><span class="list-icon">{% icon action_type.category|category_icon 16 %}</span>
+            <span class="grow"><span class="title" style="font-size:.88rem">{{ action_type.name }}</span>
+              <span class="sub">{% if action_type.requires_evidence %}Photo requise{% else %}Photo conseillée{% endif %}{% if action_type.unit %} · en {{ action_type.unit }}{% endif %}</span></span>
+            <span class="pill tone-lime">+{{ action_type.points }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+{% endblock %}

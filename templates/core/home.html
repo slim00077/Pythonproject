@@ -1,0 +1,154 @@
+{% extends 'layouts/public.html' %}
+{% load eco_tags l10n humanize %}
+{% block title %}Agir ensemble. Faire la différence.{% endblock %}
+{% block content %}
+<section class="hero">
+  <canvas data-particles aria-hidden="true"></canvas>
+  <div class="container hero-grid">
+    <div>
+      <span class="hero-kicker"><b>EcoTrack</b> La compétition écologique entre équipes</span>
+      <h1 class="hero-title">Agir ensemble.<br><span class="gradient-text">Faire la différence.</span></h1>
+      <p class="hero-lead">EcoTeams transforme vos gestes écologiques du quotidien en une compétition collective, mesurable et motivante. Formez une équipe, relevez des défis, faites valider vos actions et grimpez au classement.</p>
+      <div class="hero-cta">
+        {% if user.is_authenticated %}
+          <a class="btn btn-primary btn-lg" href="{% url 'analytics:dashboard' %}">{% icon 'dashboard' 20 %} Accéder à mon espace</a>
+          <a class="btn btn-secondary btn-lg" href="{% url 'actions:create' %}">{% icon 'leaf' 20 %} Déclarer une action</a>
+        {% else %}
+          <a class="btn btn-primary btn-lg" href="{% url 'accounts:register' %}">{% icon 'rocket' 20 %} Rejoindre le mouvement</a>
+          <a class="btn btn-secondary btn-lg" href="{% url 'accounts:login' %}">{% icon 'log-in' 20 %} J’ai déjà un compte</a>
+        {% endif %}
+      </div>
+      <div class="hero-proof">
+        <div><strong data-count-to="{{ stats.users }}">{{ stats.users }}</strong><span>participants</span></div>
+        <div><strong data-count-to="{{ stats.teams }}">{{ stats.teams }}</strong><span>équipes actives</span></div>
+        <div><strong data-count-to="{{ stats.challenges }}">{{ stats.challenges }}</strong><span>défis en cours</span></div>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="orb">
+        <div class="orb-ring r3"></div>
+        <div class="orb-ring r2"><span class="orb-sat"><span>{% icon 'zap' 22 %}</span></span><span class="orb-sat s2"><span>{% icon 'droplet' 22 %}</span></span></div>
+        <div class="orb-ring r1"><span class="orb-sat"><span>{% icon 'recycle' 22 %}</span></span><span class="orb-sat s2"><span>{% icon 'bike' 22 %}</span></span></div>
+        <div class="orb-core"></div>
+        <div class="orb-card c1"><span class="muted">Actions validées</span><strong>{{ stats.actions|intcomma }}</strong></div>
+        <div class="orb-card c2"><span class="muted">CO₂ évité (estimation)</span><strong>{{ stats.co2|floatformat:0|intcomma }} kg</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container">
+  <div class="kpi-strip card card-glass reveal">
+    <div><strong data-count-to="{{ stats.actions }}">{{ stats.actions }}</strong><span>actions écologiques validées</span></div>
+    <div><strong data-count-to="{{ stats.points }}">{{ stats.points }}</strong><span>points enregistrés au registre</span></div>
+    <div><strong data-count-to="{{ stats.co2|unlocalize }}" data-decimals="0">{{ stats.co2|floatformat:0 }}</strong><span>kg de CO₂ évités (estimation)</span></div>
+    <div><strong data-count-to="{{ stats.teams }}">{{ stats.teams }}</strong><span>équipes en compétition</span></div>
+  </div>
+  <p class="estimate-note mt-1">{% icon 'info' 14 %} Chiffres calculés en temps réel à partir de la base de données. Le CO₂ est une estimation fondée sur les facteurs configurés par l’administration.</p>
+</section>
+
+<section class="section" id="fonctionnalites">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">{% icon 'sparkles' 14 %} Fonctionnalités</span>
+      <h2>Tout ce qu’il faut pour passer de l’intention à l’impact</h2>
+      <p>Cinq modules complémentaires, reliés par un registre de points auditable et un tableau de bord commun.</p>
+    </div>
+    <div class="grid grid-3">
+      <article class="card card-hover feature reveal"><span class="stat-icon">{% icon 'users' 24 %}</span><h3>Équipes et adhésions</h3><p>Créez votre équipe, recrutez des coéquipiers et coordonnez-vous avec un capitaine.</p><span class="owner">Module 1 · Équipes</span></article>
+      <article class="card card-hover feature reveal"><span class="stat-icon cyan">{% icon 'flag' 24 %}</span><h3>Défis écologiques</h3><p>Transport, recyclage, énergie, eau… Des défis validés, datés, avec suivi de progression.</p><span class="owner">Module 2 · Défis</span></article>
+      <article class="card card-hover feature reveal"><span class="stat-icon emerald">{% icon 'clipboard-check' 24 %}</span><h3>Actions vérifiées</h3><p>Déclarez vos actions avec photo justificative : elles sont modérées avant d’attribuer des points.</p><span class="owner">Module 3 · Actions</span></article>
+      <article class="card card-hover feature reveal"><span class="stat-icon gold">{% icon 'award' 24 %}</span><h3>Objectifs et badges</h3><p>Fixez-vous des objectifs personnels, entretenez votre série et débloquez des badges.</p><span class="owner">Module 4 · Gamification</span></article>
+      <article class="card card-hover feature reveal"><span class="stat-icon">{% icon 'calendar' 24 %}</span><h3>Campagnes et événements</h3><p>Nettoyages, ateliers, conférences : participez aux actions collectives de la communauté.</p><span class="owner">Module 5 · Communauté</span></article>
+      <article class="card card-hover feature reveal"><span class="stat-icon cyan">{% icon 'bar-chart' 24 %}</span><h3>Classement et statistiques</h3><p>Un classement dynamique calculé à partir du registre des points, et des tableaux de bord clairs.</p><span class="owner">Module 5 · Analyses</span></article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="comment">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">{% icon 'activity' 14 %} Comment ça marche</span>
+      <h2>Trois étapes pour faire équipe avec la planète</h2>
+    </div>
+    <div class="how">
+      <div class="card card-glow how-step reveal"><h3>Rejoignez une équipe</h3><p>Inscrivez-vous, puis créez votre équipe ou rejoignez-en une qui partage vos priorités.</p></div>
+      <div class="card card-glow how-step reveal"><h3>Agissez et déclarez</h3><p>Relevez des défis, réalisez des gestes concrets et déclarez-les avec une preuve.</p></div>
+      <div class="card card-glow how-step reveal"><h3>Gagnez ensemble</h3><p>Chaque action validée rapporte des points à votre équipe et la fait progresser au classement.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="equipes">
+  <div class="container split-even split">
+    <div class="card card-glass reveal">
+      <div class="card-head"><h2>{% icon 'trophy' %} Équipes en tête</h2><a class="card-link" href="{% url 'analytics:leaderboard' %}">Classement complet {% icon 'arrow-right' 14 %}</a></div>
+      {% if top_teams %}
+        <ul class="list">
+          {% for team in top_teams %}
+            <li class="list-item">
+              <span class="rank-badge r{{ team.rank }}">{{ team.rank }}</span>
+              {% include 'partials/team_logo.html' with t=team %}
+              <span class="grow"><span class="title">{{ team.name }}</span><span class="sub">{{ team.member_total }} membre{{ team.member_total|pluralize }} · {{ team.approved_actions }} action{{ team.approved_actions|pluralize }} validée{{ team.approved_actions|pluralize }}</span></span>
+              <span class="big-number">{{ team.points|intcomma }}<small class="muted"> pts</small></span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include 'partials/empty.html' with icon='trophy' title='Le classement attend ses premières équipes' text='Les premiers points apparaîtront dès qu’une action sera validée.' %}
+      {% endif %}
+    </div>
+    <div class="card card-glass reveal">
+      <div class="card-head"><h2>{% icon 'calendar' %} Prochains rendez-vous</h2><a class="card-link" href="{% url 'community:list' %}">Tous les événements {% icon 'arrow-right' 14 %}</a></div>
+      {% if upcoming_events %}
+        <ul class="list">
+          {% for event in upcoming_events %}
+            <li class="list-item">
+              <span class="date-tile"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d">{{ event.start_at|date:'d' }}</span></span>
+              <span class="grow"><span class="title">{{ event.title }}</span><span class="sub">{{ event.get_kind_display }} · {% if event.format == 'online' %}En ligne{% else %}{{ event.location }}{% endif %}</span></span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% include 'partials/empty.html' with icon='calendar' title='Aucun événement programmé' text='Les campagnes publiées par la communauté apparaîtront ici.' %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="section" id="odd">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">{% icon 'globe' 14 %} Objectifs de développement durable</span>
+      <h2>Un projet aligné sur l’Agenda 2030 des Nations unies</h2>
+    </div>
+    <div class="sdg-grid">
+      <div class="card sdg reveal" style="--sdg:#4C9F38"><span class="num">13</span><h3>Action climatique</h3><p>Réduire l’empreinte carbone grâce à des gestes mesurés et encouragés.</p></div>
+      <div class="card sdg reveal" style="--sdg:#CF8D2A"><span class="num">12</span><h3>Consommation et production responsables</h3><p>Recycler, réparer, consommer mieux et lutter contre le gaspillage.</p></div>
+      <div class="card sdg reveal" style="--sdg:#FD9D24"><span class="num">11</span><h3>Villes et communautés durables</h3><p>Mobilité douce et actions locales pour des lieux de vie plus sains.</p></div>
+      <div class="card sdg reveal" style="--sdg:#3D7AB5"><span class="num">17</span><h3>Partenariats pour les objectifs</h3><p>Écoles, entreprises et associations unies autour d’objectifs communs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container grid grid-3">
+    <div class="card audience-card reveal"><span class="stat-icon">{% icon 'graduation-cap' 22 %}</span><div><h3>Étudiants et jeunes</h3><p class="text-2 mb-0">Des défis ludiques entre promotions, clubs et associations étudiantes.</p></div></div>
+    <div class="card audience-card reveal"><span class="stat-icon cyan">{% icon 'briefcase' 22 %}</span><div><h3>Salariés et entreprises</h3><p class="text-2 mb-0">Fédérer les équipes autour d’une démarche RSE concrète et mesurable.</p></div></div>
+    <div class="card audience-card reveal"><span class="stat-icon gold">{% icon 'heart' 22 %}</span><div><h3>Associations</h3><p class="text-2 mb-0">Mobiliser les bénévoles et valoriser l’impact collectif des campagnes.</p></div></div>
+  </div>
+</section>
+
+<section class="container">
+  <div class="cta-band card card-glow reveal">
+    <span class="eyebrow">{% icon 'sprout' 14 %} Prêts à relever le défi ?</span>
+    <h2>Votre équipe peut faire la différence dès aujourd’hui</h2>
+    <p>Créez un compte gratuit, rejoignez une équipe et déclarez votre première action écologique en moins de deux minutes.</p>
+    {% if user.is_authenticated %}
+      <a class="btn btn-primary btn-lg" href="{% url 'challenges:list' %}">{% icon 'flag' 20 %} Découvrir les défis</a>
+    {% else %}
+      <a class="btn btn-primary btn-lg" href="{% url 'accounts:register' %}">{% icon 'rocket' 20 %} Créer mon compte</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

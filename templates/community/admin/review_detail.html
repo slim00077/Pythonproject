@@ -1,0 +1,50 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Examiner {{ event.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'community_admin:review_list' %}">Validation des événements</a> {% icon 'chevron-right' 14 %} {{ event.title }}</nav>
+    <h1>{{ event.title }}</h1>
+    <div class="row"><span class="pill tone-{{ event.status|status_tone }}">{{ event.get_status_display }}</span><span class="pill tone-muted">{{ event.get_kind_display }}</span></div>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{{ event.get_absolute_url }}">{% icon 'eye' 18 %} Page de l’événement</a>
+    {% if event.status != 'cancelled' and event.status != 'completed' %}<a class="btn btn-secondary" href="{% url 'community:update' event.slug %}">{% icon 'edit' 18 %} Modifier</a>{% endif %}
+  </div>
+</div>
+<div class="split">
+  <div class="card">
+    <p class="prose">{{ event.description }}</p>
+    <dl class="kv mt-2">
+      <dt>Organisateur</dt><dd>{{ event.organizer|display_name }}</dd>
+      <dt>Début</dt><dd>{{ event.start_at|date:'d/m/Y H:i' }}</dd>
+      <dt>Fin</dt><dd>{{ event.end_at|date:'d/m/Y H:i' }}</dd>
+      <dt>Format</dt><dd>{{ event.get_format_display }}</dd>
+      <dt>Lieu</dt><dd>{{ event.location|default:'—' }}</dd>
+      <dt>Lien</dt><dd>{{ event.online_url|default:'—' }}</dd>
+      <dt>Public visé</dt><dd>{{ event.get_target_audience_display }}</dd>
+      <dt>Capacité</dt><dd>{{ event.capacity|default:'Illimitée' }}</dd>
+      <dt>Inscrits</dt><dd>{{ participant_total }}</dd>
+    </dl>
+  </div>
+  <aside class="card card-glass">
+    <h2>{% icon 'shield-check' %} Décision</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'partials/form_fields.html' %}
+      <div class="stack-sm mt-3">
+        {% if event.status == 'draft' or event.status == 'pending' %}
+          <button class="btn btn-success btn-block" type="submit" name="decision" value="publish">{% icon 'check-circle' 18 %} Publier</button>
+          {% if event.status == 'pending' %}<button class="btn btn-danger btn-block" type="submit" name="decision" value="reject">{% icon 'x-circle' 18 %} Renvoyer en brouillon</button>{% endif %}
+        {% elif event.status == 'published' %}
+          <button class="btn btn-secondary btn-block" type="submit" name="decision" value="complete">{% icon 'flag' 18 %} Marquer comme terminé</button>
+          <button class="btn btn-danger btn-block" type="submit" name="decision" value="cancel" data-confirm="Annuler cet événement ?">{% icon 'x-circle' 18 %} Annuler l’événement</button>
+        {% else %}
+          <p class="text-2 mb-0">Aucune action disponible pour ce statut.</p>
+        {% endif %}
+      </div>
+    </form>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if is_create %}Nouvel objectif{% else %}Modifier l’objectif{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouvel objectif{% else %}<a href="{{ goal.get_absolute_url }}">{{ goal.title }}</a> {% icon 'chevron-right' 14 %} Modifier{% endif %}</nav>
+    <h1>{% if is_create %}Fixer un nouvel objectif{% else %}Modifier « {{ goal.title }} »{% endif %}</h1>
+    <p class="page-sub">Un bon objectif est précis, mesurable et atteignable dans le temps imparti.</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% if goal %}{{ goal.get_absolute_url }}{% else %}{% url 'goals:list' %}{% endif %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Correction de points{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'gamification:ledger' %}">Registre des points</a> {% icon 'chevron-right' 14 %} Correction</nav>
+    <h1>Enregistrer une correction de points</h1>
+    <p class="page-sub">Opération exceptionnelle et tracée : l’utilisateur est notifié et la correction apparaît dans son historique.</p>
+  </div>
+</div>
+<div class="card card-glass form-card" style="max-width:640px">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'gamification:ledger' %}">Annuler</a>
+      <button class="btn btn-primary" type="submit" data-confirm="Confirmer cette correction de points ?">{% icon 'check' 18 %} Enregistrer la correction</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

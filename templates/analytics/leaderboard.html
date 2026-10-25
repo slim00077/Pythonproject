@@ -1,0 +1,74 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Classement des équipes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'trophy' 14 %} Classement dynamique</span>
+    <h1>Classement des équipes</h1>
+    <p class="page-sub">Calculé en temps réel à partir du registre des points : seules les actions validées et les défis réussis comptent.</p>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label class="field-label" for="lp">Période</label>
+    <select class="input" id="lp" name="period">{% for value, label in periods.items %}<option value="{{ value }}" {% if period == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="field"><label class="field-label" for="lc">Catégorie</label>
+    <select class="input" id="lc" name="category"><option value="">Toutes les catégories</option>{% for value, label in categories %}<option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="field"><label class="field-label" for="ls">Trier par</label>
+    <select class="input" id="ls" name="sort">{% for value, label in sorts.items %}<option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Appliquer</button>
+</form>
+
+{% if podium %}
+  {% with first=podium.0 second=podium.1 third=podium.2 %}
+  <div class="podium">
+    {% if second %}<a href="{{ second.get_absolute_url }}" class="card podium-step p2 card-hover" style="color:inherit"><span class="place">2</span>{% include 'partials/team_logo.html' with t=second %}<span class="team-name mt-1">{{ second.name }}</span><span class="pts">{{ second.points|intcomma }}</span> <span class="muted small">pts</span></a>{% else %}<div></div>{% endif %}
+    <a href="{{ first.get_absolute_url }}" class="card card-glow podium-step p1 card-hover" style="color:inherit"><span class="place">{% icon 'crown' 20 %}</span>{% include 'partials/team_logo.html' with t=first size='lg' %}<span class="team-name mt-1">{{ first.name }}</span><span class="pts">{{ first.points|intcomma }}</span> <span class="muted small">pts</span></a>
+    {% if third %}<a href="{{ third.get_absolute_url }}" class="card podium-step p3 card-hover" style="color:inherit"><span class="place">3</span>{% include 'partials/team_logo.html' with t=third %}<span class="team-name mt-1">{{ third.name }}</span><span class="pts">{{ third.points|intcomma }}</span> <span class="muted small">pts</span></a>{% else %}<div></div>{% endif %}
+  </div>
+  {% endwith %}
+{% endif %}
+
+<div class="table-wrap mb-3">
+      <table class="table">
+        <thead><tr><th>Rang</th><th>Équipe</th><th class="num">Points</th><th class="num hide-mobile">Membres</th><th class="num hide-mobile">Défis réussis</th><th class="num hide-mobile">Actions validées</th><th style="min-width:140px">Progression</th></tr></thead>
+        <tbody>
+          {% for team in rows %}
+            <tr class="{% if my_team and my_team.pk == team.pk %}is-mine{% endif %}">
+              <td><span class="rank-badge {% if team.points > 0 and team.rank <= 3 %}r{{ team.rank }}{% endif %}">{{ team.rank }}</span></td>
+              <td style="min-width:220px"><a class="who" href="{{ team.get_absolute_url }}" style="color:inherit">{% include 'partials/team_logo.html' with t=team size='sm' %}<span><strong>{{ team.name }}</strong><span>{{ team.get_focus_area_display }}{% if my_team and my_team.pk == team.pk %} · votre équipe{% endif %}</span></span></a></td>
+              <td class="num"><strong class="text-lime">{{ team.points|intcomma }}</strong></td>
+              <td class="num hide-mobile">{{ team.member_total }}</td>
+              <td class="num hide-mobile">{{ team.completed_challenges }}</td>
+              <td class="num hide-mobile">{{ team.approved_actions }}</td>
+              <td><div class="progress"><div class="progress-bar" style="width:0" data-width="{{ team.progress }}"></div></div>
+                <div class="progress-meta"><span>{% if team.goal_points %}objectif {{ team.goal_points|intcomma }}{% else %}vs leader{% endif %}</span><span>{{ team.progress }} %</span></div></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7">{% url 'teams:create' as create_url %}{% include 'partials/empty.html' with icon='trophy' title='Aucune équipe classée' text='Créez la première équipe pour lancer la compétition.' cta_url=create_url cta_label='Créer une équipe' %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+</div>
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'bar-chart' %} Points par équipe</h3><span class="small muted">{{ periods|get_item:period }}</span></div>
+    {{ chart|json_script:'leaderboard-chart' }}
+    <div class="chart" style="min-height:0" data-chart="hbar" data-source="leaderboard-chart" data-unit="pts" aria-label="Points par équipe"></div>
+  </div>
+  <aside class="card">
+    <div class="card-head"><h3>{% icon 'star' %} Top participants</h3></div>
+    <ul class="list">
+      {% for member in top_users %}
+        <li class="list-item"><span class="rank-badge {% if forloop.counter <= 3 %}r{{ forloop.counter }}{% endif %}">{{ forloop.counter }}</span>
+          {% include 'partials/avatar.html' with u=member size='sm' %}
+          <a class="grow title" href="{% url 'accounts:public_profile' member.username %}">{{ member|display_name }}</a>
+          <strong class="text-lime">{{ member.total|intcomma }}</strong></li>
+      {% empty %}
+        <li class="muted small">Aucun point sur cette période.</li>
+      {% endfor %}
+    </ul>
+    <p class="estimate-note mt-2">{% icon 'info' 12 %} Classement individuel basé sur la même source : le registre des points.</p>
+  </aside>
+</div>
+{% endblock %}

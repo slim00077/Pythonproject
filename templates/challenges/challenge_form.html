@@ -1,0 +1,25 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{% if is_create %}Proposer un défi{% else %}Modifier le défi{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'challenges:list' %}">Défis</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouveau défi{% else %}<a href="{{ challenge.get_absolute_url }}">{{ challenge.title }}</a> {% icon 'chevron-right' 14 %} Modifier{% endif %}</nav>
+    <h1>{% if is_create %}Proposer un défi écologique{% else %}Modifier « {{ challenge.title }} »{% endif %}</h1>
+    <p class="page-sub">Le défi est enregistré comme brouillon. Il ne sera visible par la communauté qu’après validation par un responsable, qui confirmera aussi les points de récompense.</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  {% if challenge.review_notes and challenge.status == 'draft' %}
+    <div class="alert alert-warning mb-2">{% icon 'alert-triangle' %}<div><strong>Retour de la validation</strong><p>{{ challenge.review_notes }}</p></div></div>
+  {% endif %}
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% if challenge %}{{ challenge.get_absolute_url }}{% else %}{% url 'challenges:list' %}{% endif %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer le brouillon</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

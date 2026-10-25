@@ -1,0 +1,56 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Mes actions écologiques{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'leaf' 14 %} Module 3 · Actions écologiques</span>
+    <h1>Mes actions écologiques</h1>
+    <p class="page-sub">Chaque déclaration est examinée par la modération. Les points sont attribués uniquement après validation, une seule fois.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'actions:catalog' %}">{% icon 'layers' 18 %} Catalogue</a>
+    <a class="btn btn-primary" href="{% url 'actions:create' %}">{% icon 'plus' 18 %} Déclarer une action</a>
+  </div>
+</div>
+<div class="grid grid-4 mb-3">
+  <div class="card stat"><span class="stat-icon">{% icon 'check-circle' 22 %}</span><div><div class="stat-label">Validées</div><div class="stat-value">{{ counts|get_item:'approved'|default:0 }}</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'clock' 22 %}</span><div><div class="stat-label">En attente</div><div class="stat-value">{{ counts|get_item:'pending'|default:0 }}</div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points gagnés</div><div class="stat-value">{{ totals.points|intcomma }}</div></div></div>
+  <div class="card stat"><span class="stat-icon emerald">{% icon 'cloud' 22 %}</span><div><div class="stat-label">CO₂ évité</div><div class="stat-value">{{ totals.co2|default:0|floatformat:1 }} <small>kg</small></div><div class="stat-hint">estimation</div></div></div>
+</div>
+<nav class="tabs" aria-label="Filtrer par statut">
+  <a class="tab {% if not status %}active{% endif %}" href="{% url 'actions:list' %}">Toutes</a>
+  {% for value, label in statuses %}
+    <a class="tab {% if status == value %}active{% endif %}" href="?status={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value|default:0 }}</span></a>
+  {% endfor %}
+</nav>
+{% if page.object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Action</th><th>Date</th><th>Défi</th><th>Statut</th><th class="num">Points</th><th></th></tr></thead>
+      <tbody>
+        {% for submission in page %}
+          <tr>
+            <td><div class="who"><span class="list-icon">{% icon submission.action_type.category|category_icon 18 %}</span><span><strong>{{ submission.action_type.name }}</strong><span>{{ submission.description|truncatechars:60 }}</span></span></div></td>
+            <td class="nowrap">{{ submission.performed_on|date:'d/m/Y' }}</td>
+            <td>{% if submission.challenge %}<a href="{{ submission.challenge.get_absolute_url }}">{{ submission.challenge.title|truncatechars:28 }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td><span class="pill tone-{{ submission.status|status_tone }}">{{ submission.get_status_display }}</span></td>
+            <td class="num">{% if submission.status == 'approved' %}<strong class="text-lime">+{{ submission.points_awarded }}</strong>{% else %}<span class="muted">{{ submission.action_type.points }} prévus</span>{% endif %}</td>
+            <td class="actions-cell">
+              <a class="btn btn-ghost btn-sm" href="{{ submission.get_absolute_url }}">{% icon 'eye' 14 %} Détails</a>
+              {% if submission.is_editable %}<a class="btn btn-ghost btn-sm" href="{% url 'actions:update' submission.pk %}">{% icon 'edit' 14 %}<span class="sr-only">Modifier</span></a>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'partials/pagination.html' %}
+{% else %}
+  <div class="card">
+    {% url 'actions:create' as create_url %}
+    {% include 'partials/empty.html' with icon='leaf' title='Aucune action déclarée ici' text='Prenez le vélo, triez vos déchets, réduisez votre consommation… puis déclarez votre geste pour faire gagner votre équipe.' cta_url=create_url cta_label='Déclarer ma première action' %}
+  </div>
+{% endif %}
+{% endblock %}

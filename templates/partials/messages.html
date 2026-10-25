@@ -1,0 +1,12 @@
+{% load eco_tags %}
+{% if messages %}
+<div class="toast-stack" role="status" aria-live="polite">
+  {% for message in messages %}
+    <div class="toast {{ message.level_tag }}">
+      {% if message.level_tag == 'success' %}{% icon 'check-circle' %}{% elif message.level_tag == 'error' or message.level_tag == 'warning' %}{% icon 'alert-triangle' %}{% else %}{% icon 'info' %}{% endif %}
+      <div class="toast-body">{{ message }}</div>
+      <button type="button" class="toast-close" aria-label="Fermer le message">{% icon 'x' 16 %}</button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}

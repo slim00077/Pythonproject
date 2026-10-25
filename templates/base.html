@@ -1,0 +1,25 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Agir ensemble{% endblock %} · EcoTeams</title>
+  <meta name="description" content="EcoTeams transforme les gestes écologiques individuels en une compétition collective, mesurable et motivante entre équipes.">
+  <meta name="theme-color" content="#08120F">
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {# Optional web fonts, loaded without blocking rendering; system fonts are used offline. #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="{% static 'css/ecoteams.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Aller au contenu principal</a>
+  {% block layout %}{% endblock %}
+  {% include 'partials/messages.html' %}
+  <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static 'js/charts.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Mes défis{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'challenges:list' %}">Défis</a> {% icon 'chevron-right' 14 %} Mes défis</nav>
+    <h1>Mes défis</h1>
+    <p class="page-sub">Suivez vos participations et vos propositions de défis.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'challenges:create' %}">{% icon 'plus' 18 %} Proposer un défi</a></div>
+</div>
+<div class="card mb-3">
+  <div class="card-head"><h2>{% icon 'activity' %} Mes participations</h2></div>
+  {% if participations %}
+    <div class="table-wrap" style="border:0;background:none">
+      <table class="table">
+        <thead><tr><th>Défi</th><th>Statut</th><th>Progression</th><th>Fin</th><th class="num">Récompense</th></tr></thead>
+        <tbody>
+          {% for p in participations %}
+            <tr>
+              <td><a href="{{ p.challenge.get_absolute_url }}"><strong>{{ p.challenge.title }}</strong></a><div class="small muted">{{ p.challenge.get_category_display }}</div></td>
+              <td><span class="pill tone-{{ p.status|status_tone }}">{{ p.get_status_display }}</span></td>
+              <td style="min-width:180px"><div class="progress"><div class="progress-bar" style="width:0" data-width="{% if p.status == 'completed' %}100{% else %}{{ p.progress.percent }}{% endif %}"></div></div>
+                <div class="progress-meta"><span>{{ p.progress.approved }} / {{ p.progress.required }} actions</span></div></td>
+              <td class="nowrap">{{ p.challenge.end_date|date:'d/m/Y' }}</td>
+              <td class="num">+{{ p.challenge.reward_points }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% url 'challenges:list' as list_url %}
+    {% include 'partials/empty.html' with icon='flag' title='Aucune participation' text='Parcourez les défis actifs et lancez-vous.' cta_url=list_url cta_label='Voir les défis' cta_icon='search' %}
+  {% endif %}
+</div>
+<div class="card">
+  <div class="card-head"><h2>{% icon 'edit' %} Mes propositions</h2></div>
+  <ul class="list">
+    {% for challenge in created %}
+      <li class="list-item"><span class="list-icon">{% icon challenge.category|category_icon 18 %}</span>
+        <span class="grow"><a class="title" href="{{ challenge.get_absolute_url }}">{{ challenge.title }}</a><span class="sub">Créé le {{ challenge.created_at|date:'d/m/Y' }}{% if challenge.review_notes and challenge.status == 'draft' %} · retour de validation à lire{% endif %}</span></span>
+        <span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span></li>
+    {% empty %}
+      <li class="muted">Vous n’avez encore proposé aucun défi.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{{ challenge.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="{% url 'challenges:list' %}">Défis</a> {% icon 'chevron-right' 14 %} {{ challenge.title }}</nav>
+<section class="card card-glow detail-hero">
+  <div class="detail-hero-inner">
+    <span class="stat-icon" style="width:72px;height:72px;border-radius:22px">{% icon challenge.category|category_icon 34 %}</span>
+    <div class="grow">
+      <div class="row mb-1">
+        <span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span>
+        <span class="cat">{% icon challenge.category|category_icon 14 %} {{ challenge.get_category_display }}</span>
+        <span class="pill tone-muted">{{ challenge.get_difficulty_display }}</span>
+      </div>
+      <h1>{{ challenge.title }}</h1>
+      <div class="entity-meta">
+        <span>{% icon 'calendar' 14 %} Du {{ challenge.start_date|date:'d F' }} au {{ challenge.end_date|date:'d F Y' }}</span>
+        <span>{% icon 'clock' 14 %} Durée recommandée : {{ challenge.duration_days }} jour{{ challenge.duration_days|pluralize }}</span>
+        {% if challenge.creator %}<span>{% icon 'user' 14 %} Proposé par {{ challenge.creator|display_name }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong class="text-lime">+{{ challenge.reward_points }}</strong><span>points</span></div>
+      <div class="hero-stat"><strong>{{ participant_total }}</strong><span>participants</span></div>
+      <div class="hero-stat"><strong>{{ completed_total }}</strong><span>réussites</span></div>
+    </div>
+  </div>
+</section>
+
+{% if challenge.status == 'draft' or challenge.status == 'pending' %}
+  <div class="alert {% if challenge.status == 'pending' %}alert-info{% else %}alert-warning{% endif %} mb-3">
+    {% icon 'info' %}
+    <div>
+      {% if challenge.status == 'pending' %}<p><strong>En attente de validation.</strong> Ce défi n’est visible que par vous et par les responsables des défis.</p>
+      {% else %}<p><strong>Brouillon.</strong> Soumettez ce défi à validation lorsqu’il est prêt. Il deviendra public une fois approuvé.</p>{% endif %}
+      {% if challenge.review_notes %}<p><strong>Retour de la validation :</strong> {{ challenge.review_notes }}</p>{% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'info' %} Le défi</h2></div>
+      <p class="prose">{{ challenge.description }}</p>
+      <h3 class="mt-3">{% icon 'list' 18 %} Consignes</h3>
+      <ol class="steps-list">{% for line in instructions %}<li>{{ line }}</li>{% endfor %}</ol>
+      <div class="alert alert-info mt-2">{% icon 'check-circle' %}<p><strong>Condition de réussite :</strong> {{ challenge.required_actions }} action{{ challenge.required_actions|pluralize }} écologique{{ challenge.required_actions|pluralize }} de la catégorie « {{ challenge.get_category_display }} », validée{{ challenge.required_actions|pluralize }} par la modération et liée{{ challenge.required_actions|pluralize }} à ce défi pendant sa période.</p></div>
+    </div>
+    {% if participation %}
+      <div class="card">
+        <div class="card-head"><h2>{% icon 'leaf' %} Mes actions liées à ce défi</h2>
+          {% if participation.status == 'in_progress' %}<a class="btn btn-primary btn-sm" href="{% url 'actions:create' %}?challenge={{ challenge.slug }}">{% icon 'plus' 14 %} Déclarer une action</a>{% endif %}</div>
+        <ul class="list">
+          {% for submission in my_actions %}
+            <li class="list-item"><span class="list-icon">{% icon submission.action_type.category|category_icon 18 %}</span>
+              <span class="grow"><a class="title" href="{{ submission.get_absolute_url }}">{{ submission.action_type.name }}</a><span class="sub">{{ submission.performed_on|date:'d/m/Y' }}</span></span>
+              <span class="pill tone-{{ submission.status|status_tone }}">{{ submission.get_status_display }}</span></li>
+          {% empty %}
+            <li class="muted">Aucune action liée pour l’instant.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'users' %} Participants récents</h2></div>
+      <ul class="list">
+        {% for p in recent_participants %}
+          <li class="list-item">{% include 'partials/avatar.html' with u=p.user size='sm' %}
+            <span class="grow"><span class="title">{{ p.user|display_name }}</span><span class="sub">{% if p.team %}{{ p.team.name }}{% else %}Sans équipe{% endif %} · inscrit le {{ p.joined_at|date:'d/m' }}</span></span>
+            <span class="pill tone-{{ p.status|status_tone }}">{{ p.get_status_display }}</span></li>
+        {% empty %}
+          <li>{% include 'partials/empty.html' with icon='users' title='Personne n’a encore relevé ce défi' text='Soyez la première personne à vous lancer !' %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <aside class="stack">
+    <div class="card card-glass">
+      {% if participation and participation.status != 'abandoned' %}
+        <div class="text-center">
+          {% if participation.status == 'completed' %}
+            {% progress_ring 100 120 10 'réussi' 'gold' %}
+            <h3 class="mt-2">Défi réussi !</h3>
+            <p class="text-2 small">Validé le {{ participation.completed_at|date:'d/m/Y' }} · +{{ challenge.reward_points }} points ajoutés au registre.</p>
+          {% else %}
+            {% progress_ring progress.percent 120 10 'progression' %}
+            <h3 class="mt-2">{{ progress.approved }} / {{ progress.required }} actions validées</h3>
+            {% if progress.ready %}
+              <form method="post" action="{% url 'challenges:complete' challenge.slug %}">{% csrf_token %}
+                <button class="btn btn-primary btn-block" type="submit">{% icon 'trophy' 18 %} Valider ma réussite</button></form>
+            {% else %}
+              <p class="text-2 small">Déclarez vos actions en les liant à ce défi. Seules les actions validées par la modération comptent.</p>
+              <button class="btn btn-secondary btn-block" type="button" disabled>{% icon 'lock' 18 %} Valider ma réussite</button>
+            {% endif %}
+            <form method="post" action="{% url 'challenges:leave' challenge.slug %}" class="mt-2" data-confirm="Abandonner ce défi ?">{% csrf_token %}
+              <button class="btn btn-ghost btn-sm btn-block" type="submit">Abandonner le défi</button></form>
+          {% endif %}
+        </div>
+      {% elif challenge.is_joinable %}
+        <h3>{% icon 'rocket' 18 %} Prêt·e à relever ce défi ?</h3>
+        <p class="text-2 small">Inscrivez-vous, puis liez vos actions écologiques à ce défi lors de leur déclaration.</p>
+        <form method="post" action="{% url 'challenges:join' challenge.slug %}">{% csrf_token %}
+          <button class="btn btn-primary btn-block" type="submit">{% icon 'flag' 18 %} {% if participation %}Reprendre le défi{% else %}Relever le défi{% endif %}</button></form>
+      {% else %}
+        <h3>{% icon 'lock' 18 %} Inscriptions fermées</h3>
+        <p class="text-2 small mb-0">Ce défi n’accepte pas de nouvelles participations.</p>
+      {% endif %}
+      {% if challenge.status == 'active' %}
+        <div class="mt-3"><div class="progress-meta mt-0 mb-1"><span>Temps écoulé</span><span>{{ challenge.days_left }} j restant{{ challenge.days_left|pluralize }}</span></div>
+          <div class="progress"><div class="progress-bar cyan" style="width:0" data-width="{{ challenge.time_progress }}"></div></div></div>
+      {% endif %}
+    </div>
+
+    {% if team_rows %}
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'trophy' %} Équipes engagées</h3></div>
+        <ul class="list">{% for row in team_rows %}
+          <li class="list-item"><span class="grow"><a class="title" href="{% url 'teams:detail' row.team__slug %}">{{ row.team__name }}</a><span class="sub">{{ row.total }} participant{{ row.total|pluralize }}</span></span><span class="pill tone-success">{{ row.done }} réussite{{ row.done|pluralize }}</span></li>
+        {% endfor %}</ul>
+      </div>
+    {% endif %}
+
+    {% if can_edit or can_delete or is_creator or can_review %}
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'sliders' %} Gestion</h3></div>
+        <div class="stack-sm">
+          {% if is_creator and challenge.status == 'draft' %}
+            <form method="post" action="{% url 'challenges:submit' challenge.slug %}">{% csrf_token %}
+              <button class="btn btn-primary btn-block" type="submit">{% icon 'send' 18 %} Soumettre à validation</button></form>
+          {% endif %}
+          {% if can_edit %}<a class="btn btn-secondary btn-block" href="{% url 'challenges:update' challenge.slug %}">{% icon 'edit' 18 %} Modifier</a>{% endif %}
+          {% if can_review %}<a class="btn btn-secondary btn-block" href="{% url 'challenges_admin:review_detail' challenge.slug %}">{% icon 'shield-check' 18 %} Validation et statut</a>{% endif %}
+          {% if can_delete %}<a class="btn btn-danger btn-block" href="{% url 'challenges:delete' challenge.slug %}">{% icon 'trash' 18 %} Supprimer</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

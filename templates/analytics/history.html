@@ -1,0 +1,58 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Mon historique{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'history' 14 %} Historique</span>
+    <h1>Mon historique</h1>
+    <p class="page-sub">Votre activité et vos transactions de points, en lecture seule. Solde actuel : <strong class="text-lime">{{ points|intcomma }} points</strong>.</p>
+  </div>
+</div>
+<div class="card mb-3">
+  <div class="card-head"><div><h2>{% icon 'trending-up' %} Points par semaine</h2><p class="card-sub">12 dernières semaines</p></div></div>
+  {{ weekly_chart|json_script:'history-weekly' }}
+  <div class="chart" data-chart="line" data-source="history-weekly" data-unit="pts" aria-label="Points par semaine"></div>
+</div>
+<nav class="tabs">
+  <a class="tab {% if tab != 'points' %}active{% endif %}" href="?tab=activity">{% icon 'activity' 16 %} Activité</a>
+  <a class="tab {% if tab == 'points' %}active{% endif %}" href="?tab=points">{% icon 'zap' 16 %} Transactions de points</a>
+</nav>
+{% if tab == 'points' %}
+  <div class="chips mb-2">
+    <a class="chip {% if not reason %}active{% endif %}" href="?tab=points">Tous les motifs</a>
+    {% for value, label in reasons %}<a class="chip {% if reason == value %}active{% endif %}" href="?tab=points&reason={{ value }}">{{ label }}</a>{% endfor %}
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Motif</th><th>Description</th><th>Équipe créditée</th><th class="num">Points</th></tr></thead>
+      <tbody>
+        {% for entry in page %}
+          <tr>
+            <td class="nowrap small">{{ entry.created_at|date:'d/m/Y H:i' }}</td>
+            <td><span class="pill tone-{% if entry.amount < 0 %}warning{% else %}success{% endif %}">{{ entry.get_reason_display }}</span></td>
+            <td>{% if entry.submission %}<a href="{{ entry.submission.get_absolute_url }}">{{ entry.description }}</a>{% elif entry.challenge %}<a href="{{ entry.challenge.get_absolute_url }}">{{ entry.description }}</a>{% else %}{{ entry.description }}{% endif %}</td>
+            <td>{{ entry.team.name|default:'—' }}</td>
+            <td class="num"><strong class="{% if entry.amount < 0 %}text-danger{% else %}text-lime{% endif %}">{{ entry.amount|signed }}</strong></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">{% url 'actions:create' as create_url %}{% include 'partials/empty.html' with icon='zap' title='Aucune transaction' text='Vos points apparaîtront ici dès votre première action validée.' cta_url=create_url cta_label='Déclarer une action' %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card">
+    <ul class="timeline">
+      {% for activity in page %}
+        <li class="timeline-item"><span class="timeline-dot">{% icon activity.icon 16 %}</span>
+          <div class="timeline-body">{% if activity.link %}<a href="{{ activity.link }}" style="color:var(--text)">{{ activity.description }}</a>{% else %}{{ activity.description }}{% endif %}
+            <time datetime="{{ activity.created_at|date:'c' }}">{{ activity.get_verb_display }} · {{ activity.created_at|date:'d/m/Y H:i' }}{% if activity.team %} · {{ activity.team.name }}{% endif %}</time></div></li>
+      {% empty %}
+        <li>{% include 'partials/empty.html' with icon='activity' title='Aucune activité' text='Rejoignez une équipe ou un défi pour commencer votre histoire.' %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+{% include 'partials/pagination.html' %}
+{% endblock %}

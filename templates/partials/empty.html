@@ -1,0 +1,7 @@
+{% load eco_tags %}
+<div class="empty">
+  <div class="empty-icon">{% icon icon|default:'leaf' 28 %}</div>
+  <h3>{{ title }}</h3>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+  {% if cta_url %}<a class="btn btn-primary" href="{{ cta_url }}">{% icon cta_icon|default:'plus' 18 %} {{ cta_label }}</a>{% endif %}
+</div>

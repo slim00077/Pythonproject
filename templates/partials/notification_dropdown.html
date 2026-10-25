@@ -1,0 +1,36 @@
+{% load eco_tags humanize %}
+<div class="dropdown" data-dropdown>
+  <button class="icon-btn" type="button" data-dropdown-trigger aria-haspopup="true" aria-expanded="false"
+          aria-label="Notifications{% if unread_notifications_count %} ({{ unread_notifications_count }} non lues){% endif %}">
+    {% icon 'bell' %}
+    {% if unread_notifications_count %}<span class="dot">{{ unread_notifications_count|default:0 }}</span>{% endif %}
+  </button>
+  <div class="dropdown-menu">
+    <div class="dropdown-head">
+      <strong>Notifications</strong>
+      {% if unread_notifications_count %}
+        <form method="post" action="{% url 'notifications:read_all' %}" class="inline-form">
+          {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-ghost btn-sm" type="submit">Tout marquer comme lu</button>
+        </form>
+      {% endif %}
+    </div>
+    {% for notification in latest_notifications %}
+      <a class="notif-item {% if not notification.is_read %}unread{% endif %}" href="{% url 'notifications:detail' notification.pk %}">
+        <span class="notif-icon">{% icon notification.icon 18 %}</span>
+        <span class="grow">
+          <span class="notif-title">{{ notification.title }}</span>
+          <span class="notif-text">{{ notification.message }}</span>
+          <time datetime="{{ notification.created_at|date:'c' }}">{{ notification.created_at|naturaltime }}</time>
+        </span>
+        {% if not notification.is_read %}<span class="unread-dot" aria-label="non lue"></span>{% endif %}
+      </a>
+    {% empty %}
+      <div class="empty" style="padding:24px 10px">
+        <div class="empty-icon">{% icon 'inbox' 24 %}</div>
+        <p class="mb-0">Aucune notification pour le moment.</p>
+      </div>
+    {% endfor %}
+    <div class="dropdown-foot"><a href="{% url 'notifications:list' %}">Voir toutes les notifications</a></div>
+  </div>
+</div>

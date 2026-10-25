@@ -1,0 +1,16 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Confirmer la suppression{% endblock %}
+{% block content %}
+<div class="card card-glow" style="max-width:580px;margin:40px auto;text-align:center">
+  <div class="empty-icon" style="background:rgba(255,107,107,.1);color:var(--danger);box-shadow:inset 0 0 0 1px rgba(255,107,107,.25)">{% icon 'trash' 28 %}</div>
+  <h1>Confirmer la suppression</h1>
+  <p class="text-2">Voulez-vous vraiment supprimer {{ object_label }} ?</p>
+  {% if warning %}<div class="alert alert-warning" style="text-align:left">{% icon 'alert-triangle' %}<p>{{ warning }}</p></div>{% endif %}
+  <form method="post" class="form-actions" style="justify-content:center">
+    {% csrf_token %}
+    <a href="{{ cancel_url }}" class="btn btn-ghost">Annuler</a>
+    <button class="btn btn-danger" type="submit">{% icon 'trash' 18 %} Supprimer définitivement</button>
+  </form>
+</div>
+{% endblock %}

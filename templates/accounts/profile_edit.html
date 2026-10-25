@@ -1,0 +1,22 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Modifier mon profil{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'accounts:profile' %}">Mon profil</a> {% icon 'chevron-right' 14 %} Modifier</nav>
+    <h1>Modifier mon profil</h1>
+    <p class="page-sub">Ces informations sont visibles par les autres participants (sauf votre adresse e-mail).</p>
+  </div>
+</div>
+<div class="card card-glass form-card">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% include 'partials/form_fields.html' %}
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'accounts:profile' %}">Annuler</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 18 %} Enregistrer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

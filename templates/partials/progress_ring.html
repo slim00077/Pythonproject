@@ -1,0 +1,10 @@
+{% load l10n %}{% localize off %}
+<div class="ring" style="width:{{ size }}px;height:{{ size }}px" role="img" aria-label="{{ value }} %{% if label %} — {{ label }}{% endif %}">
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 {{ size }} {{ size }}" aria-hidden="true">
+    <circle class="ring-track" cx="{{ center }}" cy="{{ center }}" r="{{ radius }}" fill="none" stroke-width="{{ stroke }}"/>
+    <circle class="ring-value {{ tone }}" cx="{{ center }}" cy="{{ center }}" r="{{ radius }}" fill="none" stroke-width="{{ stroke }}"
+            stroke-linecap="round" stroke-dasharray="{{ circumference }}" stroke-dashoffset="{{ circumference }}" data-offset="{{ offset }}"/>
+  </svg>
+  <div class="ring-label"><strong>{{ value }}%</strong>{% if label %}<span>{{ label }}</span>{% endif %}</div>
+</div>
+{% endlocalize %}

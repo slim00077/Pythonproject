@@ -1,0 +1,42 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags l10n %}
+{% block title %}Catalogue des actions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{% url 'actions:list' %}">Mes actions</a> {% icon 'chevron-right' 14 %} Catalogue</nav>
+    <h1>Catalogue des actions écologiques</h1>
+    <p class="page-sub">Les points et facteurs d’estimation CO₂ sont configurés par l’administration. Les estimations sont indicatives et ne constituent pas une mesure scientifique.</p>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  {% include 'partials/field.html' with field=form.q %}
+  {% include 'partials/field.html' with field=form.category %}
+  <button class="btn btn-secondary" type="submit">{% icon 'search' 16 %} Filtrer</button>
+</form>
+<div class="grid grid-3">
+  {% for action_type in action_types %}
+    <article class="card card-hover entity-card">
+      <div class="entity-top">
+        <span class="stat-icon">{% icon action_type.category|category_icon 22 %}</span>
+        <div class="grow"><span class="entity-title">{{ action_type.name }}</span><span class="cat">{{ action_type.get_category_display }}</span></div>
+        <span class="big-number">+{{ action_type.points }}</span>
+      </div>
+      <p class="entity-desc">{{ action_type.description }}</p>
+      <div class="entity-meta">
+        {% if action_type.co2_factor_kg is not None %}<span>{% icon 'cloud' 14 %} ≈ {{ action_type.co2_factor_kg|floatformat:-3 }} kg CO₂e / {{ action_type.unit }}</span>{% endif %}
+        {% if action_type.requires_evidence %}<span>{% icon 'image' 14 %} Photo obligatoire</span>{% endif %}
+        {% if action_type.requires_quantity %}<span>{% icon 'gauge' 14 %} Quantité en {{ action_type.unit }}</span>{% endif %}
+        <span>{% icon 'check-circle' 14 %} {{ action_type.approved_total }} validation{{ action_type.approved_total|pluralize }}</span>
+      </div>
+      {% if action_type.instructions %}<p class="small text-2 mb-0">{% icon 'info' 14 %} {{ action_type.instructions }}</p>{% endif %}
+      <div class="entity-foot">
+        <span class="estimate-note">{% if action_type.factor_source %}{% icon 'file-text' 12 %} {{ action_type.factor_source|truncatechars:48 }}{% endif %}</span>
+        <a class="btn btn-primary btn-sm" href="{% url 'actions:create' %}?type={{ action_type.slug }}">{% icon 'plus' 14 %} Déclarer</a>
+      </div>
+    </article>
+  {% empty %}
+    <div class="card" style="grid-column:1/-1">{% include 'partials/empty.html' with icon='layers' title='Aucune action disponible' text='Le catalogue est géré par l’administration.' %}</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}Registre des points{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'zap' 14 %} Administration</span>
+    <h1>Registre des points</h1>
+    <p class="page-sub">Registre en ajout seul : chaque ligne possède une référence unique qui empêche toute double attribution. Les corrections sont de nouvelles écritures motivées.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'gamification:adjust' %}">{% icon 'plus' 18 %} Enregistrer une correction</a></div>
+</div>
+<div class="grid grid-3 mb-3">
+  <div class="card stat"><span class="stat-icon">{% icon 'trending-up' 22 %}</span><div><div class="stat-label">Points attribués</div><div class="stat-value">{{ totals.awarded|intcomma }}</div></div></div>
+  <div class="card stat"><span class="stat-icon gold">{% icon 'refresh' 22 %}</span><div><div class="stat-label">Points retirés (corrections)</div><div class="stat-value">{{ totals.removed|intcomma }}</div></div></div>
+  <div class="card stat"><span class="stat-icon cyan">{% icon 'list' 22 %}</span><div><div class="stat-label">Écritures</div><div class="stat-value">{{ page.paginator.count }}</div></div></div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label class="field-label" for="lq">Rechercher</label><input class="input" id="lq" type="search" name="q" value="{{ query }}" placeholder="Utilisateur, équipe, description…"></div>
+  <div class="field"><label class="field-label" for="lr">Motif</label>
+    <select class="input" id="lr" name="reason"><option value="">Tous</option>{% for value, label in reasons %}<option value="{{ value }}" {% if reason == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button class="btn btn-secondary" type="submit">{% icon 'filter' 16 %} Filtrer</button>
+</form>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Date</th><th>Utilisateur</th><th>Équipe</th><th>Motif</th><th>Description</th><th>Référence</th><th class="num">Points</th></tr></thead>
+    <tbody>
+      {% for entry in page %}
+        <tr>
+          <td class="nowrap small">{{ entry.created_at|date:'d/m/Y H:i' }}</td>
+          <td>{{ entry.user|display_name }}</td>
+          <td>{{ entry.team.name|default:'—' }}</td>
+          <td><span class="pill tone-{% if entry.amount < 0 %}warning{% else %}success{% endif %}">{{ entry.get_reason_display }}</span></td>
+          <td class="small">{{ entry.description }}{% if entry.created_by %}<div class="muted">par {{ entry.created_by|display_name }}</div>{% endif %}</td>
+          <td class="mono">{{ entry.reference|truncatechars:26 }}</td>
+          <td class="num"><strong class="{% if entry.amount < 0 %}text-danger{% else %}text-lime{% endif %}">{{ entry.amount|signed }}</strong></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include 'partials/empty.html' with icon='zap' title='Registre vide' text='Les points apparaîtront dès la première action validée.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

@@ -1,0 +1,30 @@
+{% load eco_tags %}
+<article class="card card-hover entity-card">
+  <div class="entity-cover">
+    {% if challenge.image %}<img src="{{ challenge.image.url }}" alt="">{% else %}<div class="cover-art">{% icon challenge.category|category_icon 56 %}</div>{% endif %}
+    <span class="pill tone-{{ challenge.status|status_tone }}">{{ challenge.get_status_display }}</span>
+  </div>
+  <div>
+    <div class="row mb-1">
+      <span class="cat">{% icon challenge.category|category_icon 14 %} {{ challenge.get_category_display }}</span>
+      <span class="pill tone-muted">{{ challenge.get_difficulty_display }}</span>
+    </div>
+    <a class="entity-title" href="{{ challenge.get_absolute_url }}">{{ challenge.title }}</a>
+  </div>
+  <p class="entity-desc">{{ challenge.description }}</p>
+  <div class="entity-meta">
+    <span>{% icon 'calendar' 14 %} {{ challenge.start_date|date:'d M' }} → {{ challenge.end_date|date:'d M Y' }}</span>
+    <span>{% icon 'users' 14 %} {{ challenge.participant_total|default:0 }} participant{{ challenge.participant_total|pluralize }}</span>
+    <span>{% icon 'check-circle' 14 %} {{ challenge.required_actions }} action{{ challenge.required_actions|pluralize }}</span>
+  </div>
+  {% if challenge.status == 'active' %}
+    <div><div class="progress"><div class="progress-bar" style="width:0" data-width="{{ challenge.time_progress }}"></div></div>
+      <div class="progress-meta"><span>Temps écoulé</span><span>{{ challenge.days_left }} jour{{ challenge.days_left|pluralize }} restant{{ challenge.days_left|pluralize }}</span></div></div>
+  {% endif %}
+  <div class="entity-foot">
+    <span><span class="big-number">+{{ challenge.reward_points }}</span> <span class="muted small">pts</span></span>
+    {% if my_status == 'in_progress' %}<span class="pill tone-info">{% icon 'activity' 12 %} En cours</span>
+    {% elif my_status == 'completed' %}<span class="pill tone-success">{% icon 'check' 12 %} Réussi</span>
+    {% else %}<a class="btn btn-secondary btn-sm" href="{{ challenge.get_absolute_url }}">Découvrir {% icon 'arrow-right' 14 %}</a>{% endif %}
+  </div>
+</article>

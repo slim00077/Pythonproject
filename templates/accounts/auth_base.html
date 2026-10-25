@@ -1,0 +1,26 @@
+{% extends 'layouts/public.html' %}
+{% load eco_tags %}
+{% block content %}
+<div class="auth-wrap">
+  <aside class="auth-side">
+    <div class="orb" aria-hidden="true">
+      <div class="orb-ring r2"><span class="orb-sat"><span>{% icon 'zap' 20 %}</span></span></div>
+      <div class="orb-ring r1"><span class="orb-sat"><span>{% icon 'recycle' 20 %}</span></span></div>
+      <div class="orb-core"></div>
+    </div>
+    <span class="eyebrow">{% icon 'leaf' 14 %} EcoTeams</span>
+    <h2>Agir ensemble.<br><span class="gradient-text">Faire la différence.</span></h2>
+    <ul>
+      <li>{% icon 'check-circle' 18 %} Des équipes soudées autour de défis concrets</li>
+      <li>{% icon 'check-circle' 18 %} Des actions vérifiées et des points auditables</li>
+      <li>{% icon 'check-circle' 18 %} Des badges, des objectifs et un classement vivant</li>
+    </ul>
+  </aside>
+  <div class="auth-panel">
+    <div class="card card-glass auth-card">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block footer %}{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'layouts/public.html' %}
+{% load eco_tags %}
+{% block title %}Page introuvable{% endblock %}
+{% block content %}
+<section class="error-page">
+  <div>
+    <div class="error-code">404</div>
+    <h1>Cette page s’est perdue dans la nature</h1>
+    <p class="text-2" style="max-width:520px;margin:0 auto 24px">La page demandée n’existe pas, a été supprimée ou ne vous est pas accessible.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-primary" href="{% if user.is_authenticated %}{% url 'analytics:dashboard' %}{% else %}{% url 'core:home' %}{% endif %}">{% icon 'arrow-left' 18 %} Revenir en lieu sûr</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block footer %}{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="{% url 'community:list' %}">Événements</a> {% icon 'chevron-right' 14 %} {{ event.title }}</nav>
+<section class="card card-glow detail-hero">
+  <div class="detail-hero-inner">
+    <span class="date-tile" style="width:76px"><span class="m">{{ event.start_at|date:'M' }}</span><span class="d" style="font-size:1.9rem">{{ event.start_at|date:'d' }}</span></span>
+    <div class="grow">
+      <div class="row mb-1">
+        <span class="pill tone-{{ event.status|status_tone }}">{{ event.get_status_display }}</span>
+        <span class="pill tone-{% if event.kind == 'campaign' %}info{% else %}lime{% endif %}">{{ event.get_kind_display }}</span>
+        <span class="cat">{% icon event.category|category_icon 14 %} {{ event.get_category_display }}</span>
+      </div>
+      <h1>{{ event.title }}</h1>
+      <div class="entity-meta">
+        <span>{% icon 'clock' 14 %} {{ event.start_at|date:'l d F Y, H:i' }} → {{ event.end_at|date:'d/m H:i' }}</span>
+        <span>{% if event.format == 'online' %}{% icon 'globe' 14 %} En ligne{% else %}{% icon 'map-pin' 14 %} {{ event.location }}{% endif %}{% if event.format == 'hybrid' %} + en ligne{% endif %}</span>
+        <span>{% icon 'users' 14 %} {{ event.get_target_audience_display }}</span>
+        {% if event.organizer %}<span>{% icon 'user' 14 %} Organisé par {{ event.organizer|display_name }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong>{{ participant_total }}{% if event.capacity %}<small class="muted">/{{ event.capacity }}</small>{% endif %}</strong><span>inscrits</span></div>
+    </div>
+  </div>
+</section>
+{% if event.status == 'draft' or event.status == 'pending' %}
+  <div class="alert alert-info mb-3">{% icon 'info' %}<div><p>{% if event.status == 'pending' %}<strong>En attente de validation.</strong> Visible uniquement par vous et par les responsables.{% else %}<strong>Brouillon.</strong> Soumettez-le à validation pour le publier.{% endif %}</p>{% if event.review_notes %}<p><strong>Retour :</strong> {{ event.review_notes }}</p>{% endif %}</div></div>
+{% elif event.status == 'cancelled' %}
+  <div class="alert alert-danger mb-3">{% icon 'x-circle' %}<p><strong>Événement annulé.</strong> {{ event.review_notes }}</p></div>
+{% endif %}
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <h2>{% icon 'info' %} Présentation</h2>
+      <p class="prose">{{ event.description }}</p>
+      {% if is_participant and event.online_url %}<a class="btn btn-secondary" href="{{ event.online_url }}" target="_blank" rel="noopener noreferrer">{% icon 'external-link' 16 %} Rejoindre en ligne</a>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'users' %} Participants</h2><span class="pill tone-muted">{{ participant_total }}</span></div>
+      {% if participations %}
+        <div class="grid grid-2" style="gap:10px">
+          {% for p in participations %}
+            <div class="who">{% include 'partials/avatar.html' with u=p.user size='sm' %}<span><strong>{{ p.user|display_name }}</strong><span>{% if p.team %}{{ p.team.name }}{% else %}Sans équipe{% endif %}</span></span></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty.html' with icon='users' title='Aucun inscrit pour le moment' text='Soyez la première personne à rejoindre cet événement.' %}
+      {% endif %}
+    </div>
+  </div>
+  <aside class="stack">
+    <div class="card card-glass">
+      {% if event.kind == 'campaign' %}
+        <h3>{% icon 'megaphone' 18 %} Progression de la campagne</h3>
+        <div class="progress-meta mt-0 mb-1"><span>Temps écoulé</span><span>{{ event.time_progress }} %</span></div>
+        <div class="progress mb-2"><div class="progress-bar cyan" style="width:0" data-width="{{ event.time_progress }}"></div></div>
+      {% endif %}
+      {% if event.participation_progress is not None %}
+        <div class="progress-meta mt-0 mb-1"><span>{% if event.participation_goal %}Objectif de participants{% else %}Places occupées{% endif %}</span><span>{{ event.participation_progress }} %</span></div>
+        <div class="progress mb-3"><div class="progress-bar" style="width:0" data-width="{{ event.participation_progress }}"></div></div>
+      {% endif %}
+      {% if is_participant %}
+        <div class="alert alert-success mb-2">{% icon 'check-circle' %}<p>Vous êtes inscrit·e. Un rappel vous sera envoyé avant le début.</p></div>
+        {% if not event.has_started %}
+          <form method="post" action="{% url 'community:leave' event.slug %}" data-confirm="Annuler votre participation ?">{% csrf_token %}
+            <button class="btn btn-ghost btn-block" type="submit">{% icon 'x' 18 %} Annuler ma participation</button></form>
+        {% endif %}
+      {% elif event.is_joinable %}
+        <form method="post" action="{% url 'community:join' event.slug %}">{% csrf_token %}
+          <button class="btn btn-primary btn-block" type="submit">{% icon 'calendar-check' 18 %} Je participe</button></form>
+      {% else %}
+        <p class="text-2 mb-0">{% if event.is_full %}Complet.{% elif event.has_ended %}Cet événement est terminé.{% else %}Les inscriptions ne sont pas ouvertes.{% endif %}</p>
+      {% endif %}
+    </div>
+    {% if team_rows %}
+      <div class="card"><div class="card-head"><h3>{% icon 'trophy' %} Équipes représentées</h3></div>
+        <ul class="list">{% for row in team_rows %}<li class="list-item"><a class="grow title" href="{% url 'teams:detail' row.team__slug %}">{{ row.team__name }}</a><span class="pill tone-lime">{{ row.total }}</span></li>{% endfor %}</ul></div>
+    {% endif %}
+    {% if can_edit or can_delete or can_cancel or is_organizer or can_review %}
+      <div class="card"><div class="card-head"><h3>{% icon 'sliders' %} Gestion</h3></div>
+        <div class="stack-sm">
+          {% if is_organizer and event.status == 'draft' %}
+            <form method="post" action="{% url 'community:submit' event.slug %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit">{% icon 'send' 18 %} Soumettre à validation</button></form>
+          {% endif %}
+          {% if can_edit %}<a class="btn btn-secondary btn-block" href="{% url 'community:update' event.slug %}">{% icon 'edit' 18 %} Modifier</a>{% endif %}
+          {% if can_review %}<a class="btn btn-secondary btn-block" href="{% url 'community_admin:review_detail' event.slug %}">{% icon 'shield-check' 18 %} Validation et statut</a>{% endif %}
+          {% if can_cancel %}
+            <form method="post" action="{% url 'community:cancel' event.slug %}" data-confirm="Annuler cet événement ? Les participants seront prévenus.">{% csrf_token %}
+              <input class="input mb-1" name="reason" maxlength="500" placeholder="Motif de l’annulation (facultatif)" aria-label="Motif de l’annulation">
+              <button class="btn btn-danger btn-block" type="submit">{% icon 'x-circle' 18 %} Annuler l’événement</button></form>
+          {% endif %}
+          {% if can_delete %}<a class="btn btn-danger btn-block" href="{% url 'community:delete' event.slug %}">{% icon 'trash' 18 %} Supprimer</a>{% endif %}
+        </div></div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

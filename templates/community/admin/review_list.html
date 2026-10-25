@@ -1,0 +1,40 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Validation des événements{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'megaphone' 14 %} Administration</span>
+    <h1>Validation des événements</h1>
+    <p class="page-sub">Les événements proposés par la communauté ne sont publiés qu’après validation.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'community:create' %}">{% icon 'plus' 18 %} Créer un événement</a></div>
+</div>
+<nav class="tabs">
+  <a class="tab {% if tab == 'pending' %}active{% endif %}" href="?tab=pending">En attente <span class="count">{{ counts.pending }}</span></a>
+  <a class="tab {% if tab == 'published' %}active{% endif %}" href="?tab=published">Publiés <span class="count">{{ counts.published }}</span></a>
+  <a class="tab {% if tab == 'drafts' %}active{% endif %}" href="?tab=drafts">Brouillons <span class="count">{{ counts.drafts }}</span></a>
+  <a class="tab {% if tab == 'closed' %}active{% endif %}" href="?tab=closed">Terminés / annulés <span class="count">{{ counts.closed }}</span></a>
+</nav>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Événement</th><th>Organisateur</th><th>Date</th><th>Format</th><th class="num">Inscrits</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for event in page %}
+        <tr>
+          <td><strong>{{ event.title }}</strong><div class="small muted">{{ event.get_kind_display }} · {{ event.get_category_display }}</div></td>
+          <td>{{ event.organizer|display_name }}</td>
+          <td class="nowrap small">{{ event.start_at|date:'d/m/Y H:i' }}</td>
+          <td>{{ event.get_format_display }}</td>
+          <td class="num">{{ event.participant_total }}{% if event.capacity %}/{{ event.capacity }}{% endif %}</td>
+          <td><span class="pill tone-{{ event.status|status_tone }}">{{ event.get_status_display }}</span></td>
+          <td class="actions-cell"><a class="btn btn-secondary btn-sm" href="{% url 'community_admin:review_detail' event.slug %}">{% icon 'eye' 14 %} Examiner</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">{% include 'partials/empty.html' with icon='check-circle' title='Rien à traiter ici' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

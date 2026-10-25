@@ -1,0 +1,37 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Défis écologiques{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'flag' 14 %} Module 2 · Défis</span>
+    <h1>Défis écologiques</h1>
+    <p class="page-sub">Rejoignez un défi, liez-y vos actions écologiques validées et décrochez la récompense lorsque l’objectif est atteint.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'challenges:mine' %}">{% icon 'list' 18 %} Mes défis</a>
+    <a class="btn btn-primary" href="{% url 'challenges:create' %}">{% icon 'plus' 18 %} Proposer un défi</a>
+  </div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  {% include 'partials/field.html' with field=form.q %}
+  {% include 'partials/field.html' with field=form.category %}
+  {% include 'partials/field.html' with field=form.difficulty %}
+  {% include 'partials/field.html' with field=form.status %}
+  {% include 'partials/field.html' with field=form.sort %}
+  <button class="btn btn-secondary" type="submit">{% icon 'search' 16 %} Filtrer</button>
+</form>
+{% if page.object_list %}
+  <div class="grid grid-3">
+    {% for challenge in page %}
+      {% include 'challenges/_challenge_card.html' with my_status=mine|get_item:challenge.pk %}
+    {% endfor %}
+  </div>
+  {% include 'partials/pagination.html' %}
+{% else %}
+  <div class="card">
+    {% url 'challenges:create' as create_url %}
+    {% include 'partials/empty.html' with icon='flag' title='Aucun défi ne correspond à ces critères' text='Essayez d’autres filtres, ou proposez un nouveau défi à la communauté.' cta_url=create_url cta_label='Proposer un défi' %}
+  </div>
+{% endif %}
+{% endblock %}

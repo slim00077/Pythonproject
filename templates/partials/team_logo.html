@@ -1,0 +1,1 @@
+{% load eco_tags %}<span class="avatar avatar-team{% if size %} avatar-{{ size }}{% endif %}" aria-hidden="true">{% if t.logo %}<img src="{{ t.logo.url }}" alt="">{% else %}{% icon t.focus_area|category_icon 20 %}{% endif %}</span>

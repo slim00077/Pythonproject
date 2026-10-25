@@ -1,0 +1,38 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Catalogue des actions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{% icon 'layers' 14 %} Administration</span>
+    <h1>Catalogue des actions écologiques</h1>
+    <p class="page-sub">Définissez les points fixes et les facteurs CO₂ (documentés) de chaque action. Une action déjà utilisée ne peut pas être supprimée : désactivez-la.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'actions_admin:type_create' %}">{% icon 'plus' 18 %} Nouvelle action</a></div>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Action</th><th>Catégorie</th><th class="num">Points</th><th>Facteur CO₂</th><th>Exigences</th><th class="num">Déclarations</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for action_type in action_types %}
+        <tr>
+          <td><strong>{{ action_type.name }}</strong></td>
+          <td><span class="cat">{% icon action_type.category|category_icon 14 %} {{ action_type.get_category_display }}</span></td>
+          <td class="num">{{ action_type.points }}</td>
+          <td class="small">{% if action_type.co2_factor_kg is not None %}{{ action_type.co2_factor_kg|floatformat:-3 }} kg / {{ action_type.unit }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td><div class="chips">{% if action_type.requires_evidence %}<span class="pill tone-info">Photo</span>{% endif %}{% if action_type.requires_quantity %}<span class="pill tone-info">Quantité</span>{% endif %}</div></td>
+          <td class="num">{{ action_type.submission_total }}</td>
+          <td>{% if action_type.is_active %}<span class="pill tone-success">Active</span>{% else %}<span class="pill tone-muted">Inactive</span>{% endif %}</td>
+          <td class="actions-cell">
+            <a class="btn btn-ghost btn-sm" href="{% url 'actions_admin:type_update' action_type.pk %}">{% icon 'edit' 14 %} Modifier</a>
+            <form method="post" action="{% url 'actions_admin:type_toggle' action_type.pk %}" class="inline-form">{% csrf_token %}
+              <button class="btn btn-ghost btn-sm" type="submit">{% if action_type.is_active %}Désactiver{% else %}Activer{% endif %}</button></form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% include 'partials/empty.html' with icon='layers' title='Catalogue vide' text='Ajoutez une première action écologique.' %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

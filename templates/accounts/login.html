@@ -1,0 +1,18 @@
+{% extends 'accounts/auth_base.html' %}
+{% load eco_tags %}
+{% block title %}Connexion{% endblock %}
+{% block auth_content %}
+<span class="eyebrow">{% icon 'log-in' 14 %} Connexion</span>
+<h1>Bon retour !</h1>
+<p class="text-2">Connectez-vous pour retrouver votre équipe et vos défis.</p>
+{% if request.GET.next and not user.is_authenticated %}
+  <div class="alert alert-info mb-2">{% icon 'lock' %}<p>Cette page est réservée aux membres connectés.</p></div>
+{% endif %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include 'partials/form_fields.html' %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-lg btn-block mt-3" type="submit"><span class="spinner"></span>{% icon 'log-in' 18 %} Se connecter</button>
+</form>
+<p class="auth-switch">Pas encore de compte ? <a href="{% url 'accounts:register' %}">Créer un compte</a></p>
+{% endblock %}

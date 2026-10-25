@@ -1,0 +1,97 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags humanize %}
+{% block title %}{% if is_own %}Mon profil{% else %}{{ profile_user|display_name }}{% endif %}{% endblock %}
+{% block content %}
+<section class="card card-glow detail-hero">
+  <div class="detail-hero-inner profile-hero">
+    {% include 'partials/avatar.html' with u=profile_user size='lg' %}
+    <div class="meta">
+      <span class="eyebrow">{% icon 'user' 14 %} {% if is_own %}Mon profil{% else %}Profil public{% endif %}</span>
+      <h1>{{ profile_user|display_name }}</h1>
+      <div class="entity-meta">
+        <span>@{{ profile_user.username }}</span>
+        <span>{% icon 'briefcase' 14 %} {{ profile_user.get_organization_type_display }}{% if profile_user.organization %} · {{ profile_user.organization }}{% endif %}</span>
+        {% if profile_user.city %}<span>{% icon 'map-pin' 14 %} {{ profile_user.city }}</span>{% endif %}
+        <span>{% icon 'calendar' 14 %} Membre depuis {{ profile_user.date_joined|date:'F Y' }}</span>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong>{{ points|intcomma }}</strong><span>points</span></div>
+      <div class="hero-stat"><strong>{{ approved_actions }}</strong><span>actions validées</span></div>
+      <div class="hero-stat"><strong>{{ streak.best }}</strong><span>meilleure série</span></div>
+    </div>
+  </div>
+  {% if is_own %}
+    <div class="row mt-3" style="position:relative;z-index:1">
+      <a class="btn btn-secondary btn-sm" href="{% url 'accounts:profile_edit' %}">{% icon 'edit' 16 %} Modifier mon profil</a>
+      <a class="btn btn-ghost btn-sm" href="{% url 'accounts:password_change' %}">{% icon 'key' 16 %} Changer de mot de passe</a>
+      <a class="btn btn-ghost btn-sm" href="{% url 'notifications:preferences' %}">{% icon 'sliders' 16 %} Préférences de notification</a>
+    </div>
+  {% endif %}
+</section>
+
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'info' %} À propos</h2></div>
+      {% if profile_user.bio %}<p class="prose">{{ profile_user.bio }}</p>{% else %}<p class="muted">{% if is_own %}Ajoutez une courte présentation pour que vos coéquipiers vous connaissent mieux.{% else %}Aucune présentation.{% endif %}</p>{% endif %}
+      <dl class="kv mt-2">
+        <dt>Thème préféré</dt><dd>{{ profile_user.get_favorite_category_display|default:'—' }}</dd>
+        <dt>Compétences</dt><dd>{{ profile_user.skills|default:'—' }}</dd>
+        <dt>Défis réussis</dt><dd>{{ completed_challenges }}</dd>
+        <dt>Série actuelle</dt><dd>{{ streak.current }} jour{{ streak.current|pluralize }}</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{% icon 'award' %} Badges obtenus</h2>{% if is_own %}<a class="card-link" href="{% url 'gamification:achievements' %}">Tous mes badges {% icon 'arrow-right' 14 %}</a>{% endif %}</div>
+      {% if badges %}
+        <div class="medal-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+          {% for award in badges %}
+            <div class="card medal-card" style="padding:18px 12px">
+              <div class="medal {{ award.badge.tone }}" style="width:56px;height:56px;border-radius:18px"><span>{% icon award.badge.icon 24 %}</span></div>
+              <strong>{{ award.badge.name }}</strong>
+              <div class="small muted">{{ award.awarded_at|date:'d/m/Y' }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty.html' with icon='award' title='Aucun badge pour le moment' text='Les badges se débloquent automatiquement avec les actions validées, les défis réussis et les objectifs atteints.' %}
+      {% endif %}
+    </div>
+  </div>
+  <aside class="stack">
+    <div class="card">
+      <div class="card-head"><h3>{% icon 'users' %} Équipe</h3></div>
+      {% if membership %}
+        <a class="who" href="{{ membership.team.get_absolute_url }}">
+          {% include 'partials/team_logo.html' with t=membership.team %}
+          <span><strong>{{ membership.team.name }}</strong><span>{{ membership.get_role_display }} depuis le {{ membership.joined_at|date:'d/m/Y' }}</span></span>
+        </a>
+      {% else %}
+        <p class="muted">Ne fait partie d’aucune équipe.</p>
+        {% if is_own %}<a class="btn btn-primary btn-sm" href="{% url 'teams:list' %}">{% icon 'search' 16 %} Trouver une équipe</a>{% endif %}
+      {% endif %}
+    </div>
+    {% if is_own %}
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'shield' %} Mes rôles</h3></div>
+        <div class="chips">
+          {% if user.is_superuser %}<span class="pill tone-gold">{% icon 'crown' 14 %} Administrateur</span>{% endif %}
+          {% for role in roles %}<span class="pill tone-lime">{{ role.name }}</span>{% empty %}<span class="muted">Aucun rôle</span>{% endfor %}
+        </div>
+        <p class="small muted mt-2 mb-0">Les rôles sont attribués uniquement par un administrateur.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>{% icon 'activity' %} Activité récente</h3><a class="card-link" href="{% url 'analytics:history' %}">Historique {% icon 'arrow-right' 14 %}</a></div>
+        <ul class="timeline">
+          {% for activity in activities %}
+            <li class="timeline-item"><span class="timeline-dot">{% icon activity.icon 16 %}</span><div class="timeline-body">{{ activity.description }}<time>{{ activity.created_at|naturaltime }}</time></div></li>
+          {% empty %}
+            <li class="muted">Aucune activité pour l’instant.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

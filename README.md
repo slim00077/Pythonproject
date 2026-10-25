@@ -647,3 +647,17 @@ CSRF actif sur tous les formulaires (le JS du coach envoie `X-CSRFToken`) ; ORM 
 passe hachés ; secrets dans `.env` ; `DEBUG=False` accepté (`python manage.py check --deploy` ne signale que HSTS et la
 redirection HTTPS, à régler selon l’hébergement) ; pages 403/404/500 personnalisées ; erreurs de l’API IA converties
 en messages clairs, jamais de trace affichée ; contrôle d’accès par groupes/permissions Django (`any_permission_required`).
+
+---
+
+## 15. Intégration, livraison et déploiement (CI/CD)
+
+Pipeline complet (GitHub Actions + Docker + hébergement Render) : voir **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+- `docker compose up --build` : application + PostgreSQL en local (http://localhost:8000).
+- CI (`.github/workflows/ci.yml`) : tests sur SQLite et PostgreSQL, couverture, `check --deploy`, test de fumée de l’image.
+- CD (`.github/workflows/cd.yml`) : à chaque fusion dans `main` → image publiée sur GHCR → déploiement Render → vérification de l’URL publique.
+- Dépendances d’exécution : `requirements-prod.txt` (Docker/CI/hébergement) ; `requirements.txt` reste réservé au poste local XAMPP/MySQL.
+- Sonde de santé : `/healthz/`.
+- Le passage sur PostgreSQL a révélé et corrigé un bug de verrouillage lors de la modération (`actions/services.py`) ; la CI rejoue
+  désormais toute la suite de tests sur PostgreSQL pour éviter ce genre de régression.

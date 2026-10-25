@@ -41,6 +41,14 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]')
 CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+for _loopback in ('127.0.0.1', 'localhost'):  # container health checks call the app from inside
+    if _loopback not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_loopback)
+# Render exposes the public hostname of the service at runtime: trust it without manual configuration.
+_render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if _render_host:
+    ALLOWED_HOSTS.append(_render_host)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
 
 
 # Application definition
@@ -207,6 +215,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+if not DEBUG:
+    # gunicorn has no static file server: WhiteNoise serves /static/ from STATIC_ROOT (after `collectstatic`).
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    # Compressed (gzip/brotli) static files with long-lived caching headers.
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+    }
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -223,10 +239,18 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 
+if env_bool('DJANGO_BEHIND_PROXY', default=False):
+    # The platform terminates HTTPS and forwards the original scheme in this header.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = env_bool('DJANGO_SECURE_COOKIES', default=True)
     CSRF_COOKIE_SECURE = env_bool('DJANGO_SECURE_COOKIES', default=True)
     SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', default=False)
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # probes use plain HTTP inside the container
+    # HTTP Strict Transport Security (0 = off). Raise it once HTTPS works everywhere (e.g. 31536000 = 1 year).
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
 
 
 # Messages

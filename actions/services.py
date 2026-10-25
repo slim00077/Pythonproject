@@ -73,11 +73,11 @@ def delete_submission(user, submission):
 def _lock_for_moderation(moderator, submission, expected_status):
     if not can_moderate(moderator):
         raise BusinessRuleError('Vous n’êtes pas autorisé·e à modérer les déclarations.')
-    locked = (
-        ActionSubmission.objects.select_for_update()
-        .select_related('action_type', 'user', 'challenge')
-        .get(pk=submission.pk)
-    )
+    # Lock the bare row first: PostgreSQL refuses FOR UPDATE on a query that LEFT JOINs a nullable relation
+    # (challenge), and MariaDB does not support select_for_update(of=...). Reading the related objects in a
+    # second query, still inside the same transaction, keeps the lock and works on every database.
+    ActionSubmission.objects.select_for_update().get(pk=submission.pk)
+    locked = ActionSubmission.objects.select_related('action_type', 'user', 'challenge').get(pk=submission.pk)
     if locked.user_id == moderator.pk:
         raise BusinessRuleError('Vous ne pouvez pas modérer vos propres déclarations.')
     if locked.status != expected_status:

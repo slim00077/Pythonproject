@@ -1040,3 +1040,13 @@ input[type="file"].input::file-selector-button {
   .banner .row .btn { white-space: normal; }
   .table-wrap { max-width: calc(100vw - 32px); }
 }
+
+/* AI Goal Studio ----------------------------------------------------------- */
+.studio-card { display: flex; flex-direction: column; }
+.studio-card .btn { margin-top: auto; }
+.studio-card h3 { font-size: 1.1rem; }
+.studio-ghost { min-height: 190px; }
+.skeleton-line { height: 12px; margin: 16px 0; border-radius: 6px; background: linear-gradient(90deg, var(--surface-3), var(--surface-2), var(--surface-3)); background-size: 200% 100%; animation: studio-shimmer 1.2s linear infinite; }
+.skeleton-line.short { width: 60%; }
+@keyframes studio-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton-line { animation: none; } }

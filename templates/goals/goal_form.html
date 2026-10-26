@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <nav class="breadcrumb"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouvel objectif{% else %}<a href="{{ goal.get_absolute_url }}">{{ goal.title }}</a> {% icon 'chevron-right' 14 %} Modifier{% endif %}</nav>
+    <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} {% if is_create %}Nouvel objectif{% else %}<a href="{{ goal.get_absolute_url }}">{{ goal.title }}</a> {% icon 'chevron-right' 14 %} Modifier{% endif %}</nav>
     <h1>{% if is_create %}Fixer un nouvel objectif{% else %}Modifier « {{ goal.title }} »{% endif %}</h1>
     <p class="page-sub">Un bon objectif est précis, mesurable et atteignable dans le temps imparti.</p>
   </div>

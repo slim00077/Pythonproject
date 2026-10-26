@@ -1,0 +1,58 @@
+# Blueprint Render : décrit l'infrastructure (application Docker + base PostgreSQL) sous forme de code.
+# Création : Render → New → Blueprint → choisir ce dépôt (voir docs/DEPLOYMENT.md, étape 4).
+databases:
+  - name: ecoteams-db
+    plan: free
+    databaseName: ecoteams
+    user: ecoteams
+
+services:
+  - type: web
+    name: ecoteams
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    branch: main
+    autoDeploy: false            # le déploiement est déclenché par la CD (GitHub Actions) une fois les tests passés
+    healthCheckPath: /healthz/
+    envVars:
+      # --- Django (production) ---
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_BEHIND_PROXY
+        value: "True"
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "True"
+      - key: DJANGO_HSTS_SECONDS
+        value: "3600"
+      - key: WEB_CONCURRENCY
+        value: "1"               # plan gratuit : 512 Mo de mémoire
+      # --- Base de données PostgreSQL (injectée par Render) ---
+      - key: DB_ENGINE
+        value: postgresql
+      - key: POSTGRES_DB
+        fromDatabase: {name: ecoteams-db, property: database}
+      - key: POSTGRES_USER
+        fromDatabase: {name: ecoteams-db, property: user}
+      - key: POSTGRES_PASSWORD
+        fromDatabase: {name: ecoteams-db, property: password}
+      - key: POSTGRES_HOST
+        fromDatabase: {name: ecoteams-db, property: host}
+      - key: POSTGRES_PORT
+        fromDatabase: {name: ecoteams-db, property: port}
+      # --- Données de démonstration et administrateur (secrets saisis dans le tableau de bord Render) ---
+      - key: SEED_DEMO_DATA
+        value: "1"
+      - key: DEMO_USER_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@example.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      # --- Coach IA et studio d'objectifs (facultatif : sans clé, un message clair s'affiche) ---
+      - key: GEMINI_API_KEY
+        sync: false

@@ -1,10 +1,15 @@
+import json
+from unittest.mock import MagicMock, patch
+
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
 from core.testing import add_member, make_superuser, make_team, make_user
+from core.exceptions import BusinessRuleError
 from notifications.models import Notification
 
+from .ai import TeamActivityGenerationError
 from .models import Membership, Team
 
 
@@ -170,3 +175,136 @@ class MembershipTests(TestCase):
         self.assertEqual(self.team.captain, self.user)
         self.assertEqual(Membership.objects.get(user=self.user).role, 'captain')
         self.assertEqual(Membership.objects.get(user=self.captain).role, 'member')
+
+
+class TeamActivityIdeasTests(TestCase):
+    def setUp(self):
+        self.captain = make_user('activity-captain')
+        self.team = make_team(self.captain, focus_area='transport')
+        self.url = reverse('teams:activity_ideas', args=[self.team.slug])
+
+    def test_activity_ideas_require_login(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_activity_ideas_only_allow_post(self):
+        self.client.force_login(self.captain)
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+
+    @patch('teams.views.generate_team_activity_ideas', return_value=[{
+        'title': 'Balade à vélo',
+        'objective': 'Encourager les trajets à vélo.',
+        'steps': ['Choisir un parcours.', 'Inviter les membres.', 'Compter les trajets.'],
+    } for _ in range(4)])
+    def test_captain_can_generate_activity_ideas(self, generate_ideas):
+        self.client.force_login(self.captain)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Balade à vélo')
+        generate_ideas.assert_called_once_with(self.team)
+
+    @patch(
+        'teams.views.generate_team_activity_ideas',
+        side_effect=TeamActivityGenerationError('La clé API Gemini est manquante.'),
+    )
+    def test_gemini_error_is_shown_to_user(self, _generate_ideas):
+        self.client.force_login(self.captain)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'La clé API Gemini est manquante.')
+
+    @patch('teams.ai.complete')
+    def test_service_requests_structured_json_from_gemini(self, mocked_complete):
+        ideas = [{
+            'title': 'Vélo',
+            'objective': 'Favoriser le vélo.',
+            'steps': ['Choisir un trajet.', 'Inviter les membres.', 'Faire le trajet.'],
+        } for _ in range(4)]
+        mocked_complete.return_value = MagicMock(text=json.dumps({'ideas': ideas}))
+        from .ai import generate_team_activity_ideas
+
+        self.assertEqual(
+            generate_team_activity_ideas(self.team),
+            ideas,
+        )
+        self.assertEqual(mocked_complete.call_args.kwargs['provider'], 'gemini')
+        self.assertIn('schema', mocked_complete.call_args.kwargs)
+
+    @patch('teams.ai.complete', side_effect=BusinessRuleError('La clé API Gemini est manquante.'))
+    def test_missing_gemini_key_has_clear_error(self, _mocked_complete):
+        from .ai import generate_team_activity_ideas
+
+        with self.assertRaisesRegex(TeamActivityGenerationError, 'clé API Gemini'):
+            generate_team_activity_ideas(self.team)
+
+    @patch('goals.ai._call_gemini', return_value=('{"ok": true}', 'gemini-test', 1, 2))
+    @patch('goals.ai.make_client', return_value=MagicMock())
+    def test_shared_ai_client_can_select_gemini_and_team_model(self, mocked_client, mocked_gemini):
+        from goals.ai import complete
+
+        result = complete(
+            'system',
+            'prompt',
+            provider='gemini',
+            model='team-gemini-test',
+        )
+
+        self.assertEqual(result.text, '{"ok": true}')
+        mocked_client.assert_called_once_with(provider='gemini')
+        self.assertEqual(mocked_gemini.call_args.kwargs['model'], 'team-gemini-test')
+
+
+class TeamCoachTests(TestCase):
+    def setUp(self):
+        self.captain = make_user('coach-captain')
+        self.team = make_team(self.captain, focus_area='transport')
+        self.url = reverse('teams:coach', args=[self.team.slug])
+
+    def test_team_coach_requires_login(self):
+        self.assertEqual(self.client.post(self.url).status_code, 302)
+
+    def test_team_coach_only_allows_post(self):
+        self.client.force_login(self.captain)
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+
+    @patch('teams.views.generate_team_coach_advice', return_value={
+        'assessment': 'La participation peut progresser.',
+        'recommendation': 'Organisez un défi vélo collectif.',
+        'steps': ['Choisir un trajet.', 'Fixer une date.', 'Inviter les membres.'],
+    })
+    def test_team_coach_displays_recommendation(self, generate_advice):
+        self.client.force_login(self.captain)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Organisez un défi vélo collectif.')
+        generate_advice.assert_called_once()
+
+    @patch('teams.ai.complete')
+    def test_coach_uses_aggregated_team_data_only(self, mocked_complete):
+        from .ai import generate_team_coach_advice
+
+        advice = {
+            'assessment': 'Les données sont encourageantes.',
+            'recommendation': 'Proposez une sortie à vélo.',
+            'steps': ['Choisir une date.', 'Préparer le parcours.', 'Inviter les membres.'],
+        }
+        mocked_complete.return_value = MagicMock(text=json.dumps(advice))
+        stats = {
+            'member_count': 2,
+            'active_members': 1,
+            'participation_rate': 50,
+            'approved_actions': 4,
+            'completed_challenges': 1,
+            'joined_challenges': 2,
+            'challenge_completion_rate': 50,
+            'weekly_points': [{'label': '20/10', 'value': 12}],
+            'categories': [{'label': 'Transport', 'count': 4}],
+            'goal_progress': None,
+        }
+
+        self.assertEqual(generate_team_coach_advice(self.team, stats), advice)
+        prompt = mocked_complete.call_args.args[1]
+        self.assertNotIn(self.captain.username, prompt)
+        self.assertNotIn(self.team.description, prompt)
+        self.assertIn('"active_members_last_30_days": 1', prompt)
+        self.assertEqual(mocked_complete.call_args.kwargs['provider'], 'gemini')

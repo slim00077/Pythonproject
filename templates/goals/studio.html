@@ -1,0 +1,55 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags static %}
+{% block title %}Studio d’objectifs IA{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="{% url 'goals:list' %}">Objectifs</a> {% icon 'chevron-right' 14 %} Studio IA</nav>
+    <span class="eyebrow">{% icon 'sparkles' 14 %} Intelligence artificielle</span>
+    <h1>Studio d’objectifs IA</h1>
+    <p class="page-sub">Décrivez votre ambition avec vos mots. L’IA lit votre historique réel et vous propose trois objectifs mesurables, prêts à créer en un clic.</p>
+  </div>
+</div>
+{% if not ai_enabled %}
+  <div class="alert alert-info">{% icon 'alert-triangle' %}<p>Le studio IA est désactivé sur ce serveur.</p></div>
+{% else %}
+<div class="split" id="studio" data-propose-url="{% url 'goals:studio_propose' %}">
+  <div>
+    <form class="card card-glass" id="studio-form" method="post" action="{% url 'goals:studio_propose' %}" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label class="field-label" for="ambition">Quelle est votre ambition écologique ?</label>
+        <textarea class="input textarea" id="ambition" name="ambition" rows="3" maxlength="{{ max_length }}" required aria-required="true" aria-describedby="ambition-help ambition-count" placeholder="Ex. : je veux réduire ma consommation d’énergie avant la fin du trimestre"></textarea>
+        <span class="field-help" id="ambition-help">Une phrase suffit : un thème, un souhait, une échéance.</span>
+        <span class="small text-2" id="ambition-count" aria-live="off">0 / {{ max_length }}</span>
+      </div>
+      <p class="small text-2 mt-1" id="examples-label">Besoin d’inspiration ? Essayez :</p>
+      <div class="chips" role="group" aria-labelledby="examples-label">
+        {% for example in examples %}<button class="chip" type="button" data-example="{{ example }}">{{ example|truncatechars:48 }}</button>{% endfor %}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit" id="studio-button">{% icon 'sparkles' 18 %} <span id="studio-button-label">Générer 3 objectifs</span></button>
+      </div>
+    </form>
+    <div id="studio-result" class="mt-3" role="status" aria-live="polite" aria-atomic="false"></div>
+  </div>
+  <aside class="card" aria-labelledby="context-title">
+    <h2 class="h3" id="context-title">{% icon 'shield' 18 %} Ce que l’IA sait de vous</h2>
+    <p class="small text-2">Uniquement ces chiffres, tirés de la base. Ni votre nom, ni votre e-mail ne sont envoyés.</p>
+    <dl class="kv mt-2">
+      <dt>Actions validées (30 jours)</dt><dd>{{ history.actions_validees_30_jours }}</dd>
+      <dt>Série en cours</dt><dd>{{ history.serie_en_cours_jours }} jour{{ history.serie_en_cours_jours|pluralize }}</dd>
+      <dt>Points</dt><dd>{{ history.points_totaux }}</dd>
+      <dt>Objectifs actifs</dt><dd>{{ history.objectifs_actifs|length }}</dd>
+    </dl>
+    {% if history.par_categorie %}
+      <h3 class="small mt-2">Actions par catégorie</h3>
+      <ul class="list" aria-label="Actions validées par catégorie sur 30 jours">
+        {% for label, total in history.par_categorie.items %}<li class="list-item"><span class="grow">{{ label }}</span><strong>{{ total }}</strong></li>{% endfor %}
+      </ul>
+    {% endif %}
+  </aside>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if ai_enabled %}<script src="{% static 'js/goal_studio.js' %}?v=1" defer></script>{% endif %}{% endblock %}

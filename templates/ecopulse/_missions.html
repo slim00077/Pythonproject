@@ -1,0 +1,26 @@
+{% load eco_tags %}
+{# Reviewable mission cards: each action is a real POST form (CSRF, then redirect to the saved challenge). Nothing is published automatically. #}
+{% for m in batch.items %}
+  <div class="ep-proposal">
+    <div class="row between"><strong>{{ m.title }}</strong>
+      <span class="pill {% if m.setting == 'indoor' %}tone-violet{% else %}tone-blue{% endif %}">{% if m.setting == 'indoor' %}Intérieur{% else %}Extérieur{% endif %}</span></div>
+    <p class="small">{{ m.description }}</p>
+    {% if not compact %}<ol class="ep-list small">{% for step in m.instructions %}<li>{{ step }}</li>{% endfor %}</ol>{% endif %}
+    <div class="row" data-ep-actions>
+      {% if m.saved_slug %}
+        <a class="small" href="{% url 'challenges:detail' m.saved_slug %}">{% icon 'check-circle' 14 %} Enregistré · voir le défi</a>
+      {% else %}
+        <form method="post" action="{% url 'ecopulse:save_proposal' %}" class="inline-form">{% csrf_token %}
+          <input type="hidden" name="batch" value="{{ batch.id }}"><input type="hidden" name="index" value="{{ forloop.counter0 }}">
+          <input type="hidden" name="mode" value="draft">
+          <button type="submit" class="btn btn-secondary btn-sm"><span class="spinner" aria-hidden="true"></span>Brouillon</button>
+        </form>
+        <form method="post" action="{% url 'ecopulse:save_proposal' %}" class="inline-form">{% csrf_token %}
+          <input type="hidden" name="batch" value="{{ batch.id }}"><input type="hidden" name="index" value="{{ forloop.counter0 }}">
+          <input type="hidden" name="mode" value="pending">
+          <button type="submit" class="btn btn-primary btn-sm"><span class="spinner" aria-hidden="true"></span>{% icon 'send' 14 %} Soumettre à validation</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}

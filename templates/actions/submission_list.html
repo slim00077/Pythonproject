@@ -19,6 +19,17 @@
   <div class="card stat"><span class="stat-icon cyan">{% icon 'zap' 22 %}</span><div><div class="stat-label">Points gagnés</div><div class="stat-value">{{ totals.points|intcomma }}</div></div></div>
   <div class="card stat"><span class="stat-icon emerald">{% icon 'cloud' 22 %}</span><div><div class="stat-label">CO₂ évité</div><div class="stat-value">{{ totals.co2|default:0|floatformat:1 }} <small>kg</small></div><div class="stat-hint">estimation</div></div></div>
 </div>
+<section class="card action-assistant-card mb-3">
+  <div class="action-assistant-head">
+    <div><span class="eyebrow">{% icon 'sparkles' 14 %} Assistant écologique</span><h2>Besoin d’une idée pour votre prochaine action ?</h2><p class="page-sub">Posez votre question ici : l’assistant vous répond et propose uniquement des actions du catalogue EcoTeams.</p></div>
+    <form method="post">{% csrf_token %}<input type="hidden" name="assistant_question" value=""><button class="btn btn-ghost btn-sm" type="submit" name="clear_assistant" value="1">Nouvelle conversation</button></form>
+  </div>
+  {% if assistant_history %}<div class="action-assistant-history">
+    {% for message in assistant_history %}<div class="action-assistant-message action-assistant-{{ message.role }}"><strong>{% if message.role == 'user' %}Vous{% else %}Eco-Assistant{% endif %}</strong><p>{{ message.content }}</p>{% if message.recommendations %}<div class="action-assistant-actions">{% for action in message.recommendations %}<a href="{% url 'actions:create' %}?type={{ action.slug }}">{{ action.name }} <b>+{{ action.points }} pts</b></a>{% endfor %}</div>{% endif %}</div>{% endfor %}
+  </div>{% else %}<p class="action-assistant-empty">Exemple : « Comment réduire ma consommation d’eau cette semaine ? »</p>{% endif %}
+  <form method="post" class="action-assistant-form">{% csrf_token %}<label class="sr-only" for="assistant-question">Votre question</label><textarea id="assistant-question" name="assistant_question" rows="2" maxlength="2000" placeholder="Écrivez votre question écologique…" required></textarea><button class="btn btn-primary" type="submit">Demander conseil {% icon 'arrow-right' 16 %}</button></form>
+  {% if assistant_error %}<p class="form-error">{{ assistant_error }}</p>{% endif %}
+</section>
 <nav class="tabs" aria-label="Filtrer par statut">
   <a class="tab {% if not status %}active{% endif %}" href="{% url 'actions:list' %}">Toutes</a>
   {% for value, label in statuses %}

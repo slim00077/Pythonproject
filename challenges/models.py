@@ -8,7 +8,7 @@ from core.choices import EcoCategory
 from core.utils import percent, unique_slugify
 from core.validators import UploadToUUID, image_validators
 
-RESERVED_CHALLENGE_SLUGS = {'create', 'mine'}
+RESERVED_CHALLENGE_SLUGS = {'create', 'mine', 'ecoproof'}
 MAX_REWARD_POINTS = 1000
 
 

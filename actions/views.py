@@ -20,6 +20,29 @@ from .models import ActionSubmission, EcoActionType
 
 @login_required
 def submission_list(request):
+    assistant_history = request.session.get('ecoassistant_history', [])
+    assistant_error = None
+    if request.method == 'POST' and 'assistant_question' in request.POST:
+        from ecoassistant.services import AssistantError, ask
+
+        question = request.POST.get('assistant_question', '').strip()
+        if request.POST.get('clear_assistant'):
+            request.session.pop('ecoassistant_history', None)
+            assistant_history = []
+        else:
+            try:
+                answer, recommendations = ask(request.user, question, assistant_history)
+                assistant_history.extend([
+                    {'role': 'user', 'content': question},
+                    {'role': 'assistant', 'content': answer,
+                     'recommendations': [
+                         {'name': action.name, 'points': action.points, 'slug': action.slug}
+                         for action in recommendations
+                     ]},
+                ])
+                request.session['ecoassistant_history'] = assistant_history[-10:]
+            except AssistantError as error:
+                assistant_error = str(error)
     status = request.GET.get('status', '')
     submissions = ActionSubmission.objects.filter(user=request.user).select_related('action_type', 'challenge')
     counts = dict(submissions.order_by().values_list('status').annotate(total=Count('pk')))
@@ -32,6 +55,8 @@ def submission_list(request):
     return render(request, 'actions/submission_list.html', {
         'page': page, 'status': status, 'counts': counts, 'totals': totals,
         'statuses': ActionSubmission.Status.choices,
+        'assistant_history': assistant_history,
+        'assistant_error': assistant_error,
     })
 
 
@@ -166,11 +191,15 @@ def moderation_detail(request, pk):
         ActionSubmission.objects.select_related('user', 'action_type', 'challenge', 'team', 'reviewed_by'), pk=pk
     )
     form = ModerationForm(request.POST or None)
+    ai_report = None
     if request.method == 'POST' and form.is_valid():
         decision = request.POST.get('decision')
         notes = form.cleaned_data['notes']
         try:
-            if decision == 'approve':
+            if decision == 'ai_validate':
+                ai_report = services.ai_validate_submission(submission)
+                messages.info(request, 'Rapport IA généré. La décision finale reste celle du modérateur.')
+            elif decision == 'approve':
                 services.approve_submission(request.user, submission, notes)
                 messages.success(request, f'Action validée : {submission.action_type.points} points attribués.')
             elif decision == 'reject':
@@ -183,12 +212,18 @@ def moderation_detail(request, pk):
                 raise BusinessRuleError('Décision inconnue.')
         except BusinessRuleError as error:
             messages.error(request, error.message)
-            return redirect('actions_admin:moderation_detail', pk=submission.pk)
-        next_pending = ActionSubmission.objects.filter(status=ActionSubmission.Status.PENDING).exclude(
-            user=request.user).order_by('created_at').first()
-        if next_pending and decision != 'revoke':
-            return redirect('actions_admin:moderation_detail', pk=next_pending.pk)
-        return redirect('actions_admin:moderation_list')
+            if decision == 'ai_validate':
+                ai_report = {'error': error.message}
+            else:
+                return redirect('actions_admin:moderation_detail', pk=submission.pk)
+        if decision == 'ai_validate':
+            pass
+        else:
+            next_pending = ActionSubmission.objects.filter(status=ActionSubmission.Status.PENDING).exclude(
+                user=request.user).order_by('created_at').first()
+            if next_pending and decision != 'revoke':
+                return redirect('actions_admin:moderation_detail', pk=next_pending.pk)
+            return redirect('actions_admin:moderation_list')
     history = ActionSubmission.objects.filter(user=submission.user).exclude(pk=submission.pk).select_related(
         'action_type')[:6]
     same_day = ActionSubmission.objects.filter(user=submission.user, performed_on=submission.performed_on).exclude(
@@ -198,6 +233,7 @@ def moderation_detail(request, pk):
         'logs': submission.moderation_logs.select_related('moderator'),
         'estimate': submission.action_type.estimate_co2(submission.quantity),
         'is_own': submission.user_id == request.user.pk,
+        'ai_report': ai_report,
     })
 
 

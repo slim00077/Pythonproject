@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     'community',
     'notifications',
     'analytics',
+    'ecoassistant',
 ]
 
 MIDDLEWARE = [
@@ -294,6 +295,10 @@ ECOTEAMS_AI_DAILY_LIMIT = int(os.environ.get('ECOTEAMS_AI_DAILY_LIMIT', '10'))
 # True : l'appel se fait dans un thread d'arrière-plan (la requête HTTP rend la main tout de suite).
 # False : appel synchrone (utilisé par les tests).
 ECOTEAMS_AI_BACKGROUND = env_bool('ECOTEAMS_AI_BACKGROUND', default=True)
+
+# Gemini is optional: without a key, Eco-Assistant uses catalogue-only fallback advice.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-flash-lite-latest').strip()
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

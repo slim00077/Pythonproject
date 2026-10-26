@@ -15,6 +15,13 @@ from teams.services import get_user_team
 from .models import ActionSubmission, ModerationLog
 
 
+def ai_validate_submission(submission):
+    """Return an advisory AI report; this deliberately has no moderation side effects."""
+    from .ai_validator import validate_submission
+
+    return validate_submission(submission)
+
+
 def can_moderate(user):
     return user.is_authenticated and user.is_active and user.has_perm(MODERATE_ACTIONS)
 

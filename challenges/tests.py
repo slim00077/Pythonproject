@@ -70,6 +70,19 @@ class ChallengeWorkflowTests(TestCase):
         self.assertEqual(self.client.get(reverse('challenges:update', args=[challenge.slug])).status_code, 403)
         self.assertTrue(Notification.objects.filter(recipient=self.admin, title='Défi à valider').exists())
 
+    def test_only_the_creator_can_submit_a_draft_and_nothing_is_published(self):
+        challenge = make_challenge(self.creator, status=Challenge.Status.DRAFT)
+        self.client.force_login(make_user('intruder'))
+        self.assertEqual(self.client.post(reverse('challenges:submit', args=[challenge.slug])).status_code, 404)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, Challenge.Status.DRAFT)
+        self.client.force_login(self.creator)
+        response = self.client.post(reverse('challenges:submit', args=[challenge.slug]))
+        self.assertRedirects(response, challenge.get_absolute_url(), fetch_redirect_response=False)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, Challenge.Status.PENDING)
+        self.assertIsNone(challenge.published_at)
+
     def test_regular_user_cannot_publish(self):
         challenge = make_challenge(self.creator, status=Challenge.Status.PENDING)
         self.client.force_login(self.creator)

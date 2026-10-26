@@ -1,0 +1,37 @@
+/* EcoProof AI — holographic panel of the Défis page. Extends the EcoTeams design tokens (navy, emerald, cyan, violet). */
+.ecoproof { padding: 26px 28px; margin-bottom: 24px; border-color: rgba(66, 232, 213, .32);
+  background: linear-gradient(135deg, rgba(34, 197, 94, .08), rgba(66, 232, 213, .06) 45%, rgba(155, 135, 245, .1)), var(--surface); }
+.ecoproof-head { display: flex; flex-wrap: wrap; gap: 16px 24px; justify-content: space-between; align-items: flex-start; }
+.ecoproof-head > div { flex: 1 1 420px; min-width: 0; }
+.ecoproof h2 { font-size: clamp(1.2rem, 2.2vw, 1.6rem); margin: 6px 0 8px; }
+.ecoproof-head p { color: var(--text-2); max-width: 720px; margin: 0 0 10px; }
+.ecoproof-mode { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+#ecoproof-panel { margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(66, 232, 213, .3); }
+.ecoproof-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.ecoproof .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.ecoproof-results { margin-top: 20px; display: grid; gap: 14px; }
+.ecoproof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.ecoproof-card { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .02); }
+.ecoproof-card h3 { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.ecoproof-card p { margin: 0 0 8px; }
+.ecoproof-card[data-tone="cyan"] { border-color: rgba(66, 232, 213, .4); box-shadow: 0 0 22px rgba(66, 232, 213, .08); }
+.ecoproof-card[data-tone="blue"] { border-color: rgba(91, 140, 255, .4); }
+.ecoproof-card[data-tone="violet"] { border-color: rgba(155, 135, 245, .4); }
+.ecoproof-card[data-tone="amber"] { border-color: rgba(255, 200, 87, .4); }
+.ecoproof-card[data-tone="emerald"] { border-color: rgba(34, 197, 94, .45); }
+.ecoproof-big { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--cyan); }
+.ecoproof-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .88rem; color: var(--text-2); }
+.ecoproof-checks li { display: flex; gap: 10px; align-items: flex-start; }
+.ecoproof-checks .mark { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; font-weight: 800; }
+.ecoproof-checks .ok .mark { background: rgba(34, 197, 94, .18); color: #7CF0A6; }
+.ecoproof-checks .todo .mark { background: rgba(255, 200, 87, .18); color: var(--amber); }
+.ecoproof-draft { padding: 14px 16px; border-radius: 14px; border: 1px dashed rgba(155, 135, 245, .5); background: rgba(155, 135, 245, .06); }
+.ecoproof-draft h3 { font-size: .95rem; margin: 0 0 6px; }
+.ecoproof-submit { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap;
+  gap: 14px 20px; justify-content: space-between; align-items: center; }
+.ecoproof-submit p { flex: 1 1 320px; }
+@media (max-width: 640px) {
+  .ecoproof { padding: 18px 16px; }
+  .ecoproof-head .btn, .ecoproof-actions .btn, .ecoproof-submit .btn { width: 100%; white-space: normal; }
+}

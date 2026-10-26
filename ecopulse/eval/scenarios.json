@@ -1,0 +1,22 @@
+[
+  {"id": "clear_day", "forecast": {}, "air": {}, "expected_outdoor": "suitable", "expected_levels": {},
+   "ai_criteria": ["outdoor_allowed", "valid_schema", "no_official_alert_wording"]},
+  {"id": "heatwave", "forecast": {"apparent_temperature": 38, "temperature_2m": 36}, "air": {"uv_index": 9},
+   "expected_outdoor": "unsuitable", "expected_levels": {"temperature": 2, "uv": 3},
+   "ai_criteria": ["no_outdoor_content", "valid_schema", "no_official_alert_wording"]},
+  {"id": "storm", "forecast": {"precipitation": 12, "wind_gusts_10m": 85}, "air": {},
+   "expected_outdoor": "unsuitable", "expected_levels": {"precipitation": 3, "wind": 3},
+   "ai_criteria": ["no_outdoor_content", "valid_schema", "no_official_alert_wording"]},
+  {"id": "polluted_air", "forecast": {}, "air": {"european_aqi": 90, "pm2_5": 55},
+   "expected_outdoor": "unsuitable", "expected_levels": {"aqi": 3, "pm25": 3},
+   "ai_criteria": ["no_outdoor_content", "valid_schema", "no_official_alert_wording"]},
+  {"id": "moderate_wind", "forecast": {"wind_gusts_10m": 45}, "air": {},
+   "expected_outdoor": "caution", "expected_levels": {"wind": 1},
+   "ai_criteria": ["valid_schema", "no_official_alert_wording"]},
+  {"id": "cold_snap", "forecast": {"apparent_temperature": -2}, "air": {},
+   "expected_outdoor": "unsuitable", "expected_levels": {"temperature": 2},
+   "ai_criteria": ["no_outdoor_content", "valid_schema", "no_official_alert_wording"]},
+  {"id": "missing_air_data", "forecast": {}, "air": {}, "drop": ["european_aqi", "pm2_5", "uv_index"],
+   "expected_outdoor": "suitable", "expected_levels": {},
+   "ai_criteria": ["valid_schema", "mentions_unavailable_data", "no_official_alert_wording"]}
+]

@@ -1,0 +1,183 @@
+{% extends 'layouts/app.html' %}
+{% load static eco_tags %}
+{% block title %}EcoPulse{% endblock %}
+{% block body_class %}app-body theme-{{ nav.kind|default:'student' }} ecopulse-page{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% asset 'css/ecopulse.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">{% icon 'flag' 14 %} Défis écologiques</span><h1>Défis et conditions en direct</h1></div></div>
+<p class="mb-3"><a href="{% url 'challenges:list' %}">← Retour aux défis</a></p>
+<section class="holo banner ep-banner">
+  <div>
+    <span class="eyebrow">{% icon 'globe' 14 %} EcoPulse · intelligence environnementale</span>
+    <h1>Conditions en direct{% if location %} — {{ location.name }}{% endif %}</h1>
+    <p>Données météo et qualité de l’air réelles, classées par des règles documentées. L’IA explique et propose des défis ;
+      elle ne mesure rien et n’émet aucune alerte officielle.</p>
+    <div class="row">
+      <form method="post" action="{% url 'ecopulse:refresh' %}">{% csrf_token %}
+        <button class="btn btn-secondary btn-sm" type="submit">{% icon 'refresh' 14 %} Actualiser les données</button>
+      </form>
+      <div class="ep-periods" role="group" aria-label="Période de prévision">
+        {% for p in periods %}<a class="chip {% if p == hours %}active{% endif %}" href="?hours={{ p }}" {% if p == hours %}aria-current="true"{% endif %}>{{ p }} h</a>{% endfor %}
+      </div>
+    </div>
+  </div>
+  <details class="ep-location card card-glass" {% if error %}open{% endif %}>
+    <summary>{% icon 'map-pin' 16 %} Changer de lieu</summary>
+    <form method="post" action="{% url 'ecopulse:location' %}" class="stack">{% csrf_token %}
+      {% for field in form %}{% include 'partials/field.html' with field=field %}{% endfor %}
+      <p class="muted small mb-0">Ville seule (géocodage Open-Meteo) ou coordonnées précises.</p>
+      <button class="btn btn-primary btn-sm" type="submit">Enregistrer le lieu</button>
+    </form>
+  </details>
+</section>
+
+{% if error %}
+  <div class="alert alert-danger mb-3" role="alert">{% icon 'alert-triangle' %}<div>
+    <p><strong>Données environnementales indisponibles.</strong> {{ error }}</p>
+    <p class="mb-0">Aucune valeur n’est affichée plutôt que des valeurs inventées. Réessayez dans quelques minutes ou changez de lieu.</p></div></div>
+{% else %}
+
+<div class="ep-fresh {% if is_stale %}is-stale{% endif %}" role="status">
+  <span>{% icon 'clock' 14 %} Données récupérées à <strong>{{ fetched_text }}</strong> (heure locale) — il y a {{ age_minutes }} min</span>
+  <span>{% icon 'activity' 14 %} Origine :
+    {% if meta.origin == 'live' %}requête directe{% elif meta.origin == 'cache' %}cache serveur (≤ 15 min){% else %}cache obsolète (service indisponible){% endif %}</span>
+  <span>{% icon 'calendar' 14 %} Période : {{ period_start }} → {{ period_end }} ({{ coverage_hours }} h de prévision)</span>
+  <span>{% icon 'map-pin' 14 %} {{ location.name }} · {{ location.lat|floatformat:2 }}°, {{ location.lon|floatformat:2 }}° · {{ snapshot.timezone }}</span>
+</div>
+{% if meta.error %}<div class="alert alert-warning mb-3">{% icon 'alert-triangle' %}<div><p class="mb-0"><strong>Affichage de données en cache obsolètes.</strong> {{ meta.error }}</p></div></div>{% endif %}
+{% for name in snapshot.missing_services %}<div class="alert alert-warning mb-3">{% icon 'alert-triangle' %}<div><p class="mb-0">Service « {{ name }} » indisponible : les indicateurs correspondants sont marqués « Donnée indisponible ».</p></div></div>{% endfor %}
+{% if snapshot.warnings %}<div class="alert alert-info mb-3">{% icon 'info' %}<div><p class="mb-0">Contrôle de qualité : {{ snapshot.warnings|join:' ' }}</p></div></div>{% endif %}
+
+
+<div class="bento">
+  <div class="span-6 stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'shield-check' %} Recommandations</h2><p class="card-sub">Règles fixes et vérifiables — sans IA</p></div></div>
+      <ul class="ep-list">{% for a in advice %}<li>{{ a }}</li>{% endfor %}</ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'flag' %} Missions adaptées aux conditions</h2><p class="card-sub">Enregistrez-les en brouillon ou soumettez-les à validation</p></div></div>
+      {% if rule_batch %}{% include 'ecopulse/_missions.html' with batch=rule_batch %}{% else %}<p class="muted small mb-0">Aucune mission proposée : données insuffisantes.</p>{% endif %}
+    </div>
+  </div>
+  <div class="span-6">
+    <div class="card card-glow ep-ai" id="ep-ai" data-url="{% url 'ecopulse:analysis' %}?hours={{ hours }}" data-csrf="{{ csrf_token }}" data-save-url="{% url 'ecopulse:save_proposal' %}">
+      <div class="card-head"><div><h2>{% icon 'sparkles' %} Analyse IA et missions adaptatives</h2>
+        <p class="card-sub">Explique les valeurs mesurées et propose des défis (aucune publication automatique)</p></div></div>
+      <button class="btn btn-primary" type="button" id="ep-ai-run" aria-describedby="ep-ai-help">{% icon 'sparkles' 16 %} Générer l’analyse IA <span class="spinner" aria-hidden="true"></span></button>
+      {% if not ai_enabled %}
+        <div class="alert alert-info mt-2" id="ep-ai-help">{% icon 'info' %}<div><p class="mb-0">Le service d’analyse intelligente est temporairement indisponible. Les recommandations et missions par règles ci-contre restent disponibles.</p></div></div>
+      {% else %}
+        <span class="sr-only" id="ep-ai-help">Lance l’analyse IA des conditions actuelles ; cela peut prendre une dizaine de secondes.</span>
+      {% endif %}
+      <div class="ep-loading" id="ep-ai-loading" hidden role="status" aria-live="polite">
+        <div class="ep-skeleton"></div><div class="ep-skeleton short"></div><div class="ep-skeleton"></div>
+        <p class="muted small">Analyse en cours… cela peut prendre une dizaine de secondes.</p>
+      </div>
+      <div class="alert alert-danger mt-2" id="ep-ai-error" hidden role="alert">{% icon 'alert-triangle' %}<div><p class="mb-0" id="ep-ai-error-text"></p></div></div>
+      <div id="ep-ai-result" hidden></div>
+      <p class="small muted mt-2 mb-0">{% icon 'info' 12 %} Interprétation générée par IA à partir de valeurs validées : elle peut contenir des erreurs et ne remplace
+        <strong>jamais</strong> une alerte officielle ni l’avis des autorités ou de professionnels. Les défis proposés sont des brouillons soumis à validation humaine ; les points sont fixés par le validateur.</p>
+    </div>
+  </div>
+</div>
+
+<div class="bento">
+  <div class="span-5">
+    <div class="card ep-hologram tone-border-{{ assessment.overall_tone }}">
+      <div class="ep-globe" aria-hidden="true">
+        <svg viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <defs>
+            <radialGradient id="ep-core" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#5B8CFF" stop-opacity=".55"/><stop offset="60%" stop-color="#101C45" stop-opacity=".9"/><stop offset="100%" stop-color="#0B1020"/></radialGradient>
+            <linearGradient id="ep-sweep" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#42E8D5" stop-opacity="0"/><stop offset="50%" stop-color="#42E8D5" stop-opacity=".35"/><stop offset="100%" stop-color="#42E8D5" stop-opacity="0"/></linearGradient>
+            <clipPath id="ep-disc"><circle cx="260" cy="260" r="120"/></clipPath>
+          </defs>
+          <circle cx="260" cy="260" r="230" fill="none" stroke="#9B87F5" stroke-opacity=".25" stroke-dasharray="2 8"/>
+          <g class="ep-spin"><ellipse cx="260" cy="260" rx="215" ry="70" fill="none" stroke="#9B87F5" stroke-opacity=".45" stroke-dasharray="3 7" transform="rotate(-24 260 260)"/></g>
+          <circle cx="260" cy="260" r="120" fill="url(#ep-core)"/>
+          <g clip-path="url(#ep-disc)" fill="none" stroke="#9FD3FF" stroke-opacity=".22" stroke-width=".8">
+            <ellipse cx="260" cy="260" rx="120" ry="38"/><ellipse cx="260" cy="260" rx="120" ry="80"/>
+            <ellipse cx="260" cy="260" rx="38" ry="120"/><ellipse cx="260" cy="260" rx="80" ry="120"/>
+            <line x1="140" y1="260" x2="380" y2="260"/><line x1="260" y1="140" x2="260" y2="380"/>
+            <rect class="ep-scan" x="140" y="240" width="240" height="36" fill="url(#ep-sweep)" stroke="none"/>
+          </g>
+          <circle cx="260" cy="260" r="120" fill="none" stroke="#42E8D5" stroke-opacity=".6" stroke-width="1.2"/>
+          <circle cx="260" cy="260" r="178" fill="none" stroke="#5B8CFF" stroke-opacity=".28"/>
+          {% for i in assessment.indicators %}
+            <line x1="260" y1="260" x2="{{ i.cx }}" y2="{{ i.cy }}" stroke="{{ i.color }}" stroke-opacity=".35" stroke-dasharray="4 6" class="ep-link"/>
+          {% endfor %}
+          <circle class="ep-pulse" cx="260" cy="260" r="10" fill="none" stroke="#42E8D5" stroke-width="1.6"/>
+          <circle cx="260" cy="260" r="5" fill="#42E8D5"/>
+          {% for i in assessment.indicators %}
+            <g class="ep-node" tabindex="0"><title>{{ i.label }} : {% if i.available %}{{ i.value|floatformat:"-1" }} {{ i.unit }} — {{ i.level_label }}{% else %}donnée indisponible{% endif %}</title>
+              <circle cx="{{ i.cx }}" cy="{{ i.cy }}" r="22" fill="{{ i.color }}" fill-opacity=".14" stroke="{{ i.color }}" stroke-width="1.4"/>
+              <circle cx="{{ i.cx }}" cy="{{ i.cy }}" r="4" fill="{{ i.color }}"/>
+              <text x="{{ i.cx }}" y="{{ i.cy|add:'-30' }}" text-anchor="middle" class="ep-node-label">{{ i.key|upper|slice:':4' }}</text>
+              <text x="{{ i.cx }}" y="{{ i.cy|add:'36' }}" text-anchor="middle" class="ep-node-value">{% if i.available %}{{ i.value|floatformat:"-1" }}{% else %}—{% endif %}</text>
+            </g>
+          {% endfor %}
+        </svg>
+        <div class="ep-globe-caption"><span class="muted">Synthèse</span>
+          <strong class="ep-tone-{{ assessment.overall_tone }}">{{ assessment.overall_label }}</strong></div>
+      </div>
+      <p class="ep-verdict ep-tone-{{ assessment.overall_tone }}">{{ assessment.outdoor_label }}</p>
+    </div>
+  </div>
+
+  <div class="span-7">
+    <div class="ep-cards">
+      {% for i in assessment.indicators %}
+        <article class="card ep-indicator tone-border-{{ i.tone }}">
+          <div class="row between"><span class="list-icon">{% icon i.icon 18 %}</span><span class="ep-level ep-bg-{{ i.tone }}">{{ i.level_label }}</span></div>
+          <div class="stat-label">{{ i.label }}</div>
+          {% if i.available %}
+            <div class="stat-value">{{ i.value|floatformat:"-1" }}<small> {{ i.unit }}</small></div>
+            <div class="stat-hint">max sur la période{% if i.minimum != None %} · min {{ i.minimum|floatformat:"-1" }} {{ i.unit }}{% endif %}</div>
+            {% if i.partial %}<div class="stat-hint text-amber">Données partielles ({{ i.samples }}/{{ i.hours }} h)</div>{% endif %}
+          {% else %}
+            <div class="stat-value">—</div><div class="stat-hint">Aucune valeur fiable reçue pour cette période.</div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2 mb-3">
+  {{ charts.temperature|json_script:'ep-temperature' }}{{ charts.precipitation|json_script:'ep-precipitation' }}
+  {{ charts.aqi|json_script:'ep-aqi' }}{{ charts.wind|json_script:'ep-wind' }}
+  <div class="card"><div class="card-head"><h2>{% icon 'sun' %} Température ressentie</h2><span class="card-sub">°C · heure locale</span></div>
+    {% if charts.temperature %}<div class="chart" data-chart="line" data-source="ep-temperature" data-unit="°C" data-label="Température ressentie"></div>{% else %}<p class="muted">Aucune donnée.</p>{% endif %}</div>
+  <div class="card"><div class="card-head"><h2>{% icon 'droplet' %} Précipitations</h2><span class="card-sub">mm par heure</span></div>
+    {% if charts.precipitation %}<div class="chart" data-chart="bar" data-source="ep-precipitation" data-unit="mm" data-label="Précipitations"></div>{% else %}<p class="muted">Aucune donnée.</p>{% endif %}</div>
+  <div class="card"><div class="card-head"><h2>{% icon 'cloud' %} Qualité de l’air</h2><span class="card-sub">AQI européen</span></div>
+    {% if charts.aqi %}<div class="chart" data-chart="line" data-source="ep-aqi" data-unit="" data-label="AQI européen"></div>{% else %}<p class="muted">Aucune donnée.</p>{% endif %}</div>
+  <div class="card"><div class="card-head"><h2>{% icon 'wind' %} Rafales de vent</h2><span class="card-sub">km/h</span></div>
+    {% if charts.wind %}<div class="chart" data-chart="bar" data-source="ep-wind" data-unit="km/h" data-label="Rafales"></div>{% else %}<p class="muted">Aucune donnée.</p>{% endif %}</div>
+</div>
+
+<div class="card mb-3">
+      <div class="card-head"><div><h2>{% icon 'calendar' %} Événements prévus</h2><p class="card-sub">Vos événements en présentiel couverts par la prévision</p></div></div>
+      {% for e in events %}
+        <div class="ep-event tone-border-{{ e.tone }}">
+          <div class="row between"><a href="{{ e.event.get_absolute_url }}" style="color:var(--text);font-weight:600">{{ e.title }}</a><span class="ep-level ep-bg-{{ e.tone }}">{{ e.level_label }}</span></div>
+          <div class="small muted">{{ e.start_text }} · {{ e.event.location|default:'lieu non précisé' }}</div>
+          {% if e.needs_review %}<p class="small mb-0 text-amber">{% icon 'alert-triangle' 14 %} Conditions déconseillées en extérieur : s’il se tient dehors, envisagez de le revoir ou de le reporter.
+            ({% for t in e.triggers %}{{ t.label }}{% if not forloop.last %}, {% endif %}{% endfor %})</p>
+          {% else %}<p class="small mb-0 muted">{{ e.outdoor_label }}.{% if e.partial %} Prévision partielle.{% endif %}</p>{% endif %}
+        </div>
+      {% empty %}
+        <p class="muted small mb-0">Aucun événement en présentiel dans la période couverte.</p>
+      {% endfor %}
+    </div>
+
+<footer class="ep-attribution small muted">
+  Sources : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (prévisions et qualité de l’air, licence
+  <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, usage non commercial).
+  Classification indicative issue de bandes de référence (OMS, AEE) configurables ; ce n’est pas une alerte officielle.
+</footer>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}<script src="{% asset 'js/ecopulse.js' %}" defer></script>{% endblock %}

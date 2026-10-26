@@ -49,3 +49,19 @@ image_validators = [
     FileExtensionValidator(allowed_extensions=ALLOWED_IMAGE_EXTENSIONS),
     MaxFileSizeValidator(),
 ]
+
+
+ALLOWED_IMAGE_FORMATS = {'JPEG', 'PNG', 'WEBP'}
+
+
+def check_image_format(upload):
+    """Reject a file whose real content (read by Pillow) is not JPEG, PNG or WebP, whatever its extension says.
+
+    ``forms.ImageField`` has already verified the file and exposes the parsed image as ``upload.image``;
+    stored files (no ``image`` attribute) are left alone.
+    """
+    image = getattr(upload, 'image', None)
+    if image is not None and image.format not in ALLOWED_IMAGE_FORMATS:
+        raise ValidationError('Format d’image non pris en charge : utilisez une image JPEG, PNG ou WebP.',
+                              code='bad_image_format')
+    return upload

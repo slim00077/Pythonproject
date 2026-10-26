@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static eco_tags %}<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
@@ -11,15 +11,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
+<<<<<<< HEAD
   <link rel="stylesheet" href="{% static 'css/ecoteams.css' %}?v=20261026-assistant-layout">
+=======
+  <link rel="stylesheet" href="{% asset 'css/ecoteams.css' %}">
+>>>>>>> origin/aziz
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#main">Aller au contenu principal</a>
   {% block layout %}{% endblock %}
   {% include 'partials/messages.html' %}
-  <script src="{% static 'js/app.js' %}" defer></script>
-  <script src="{% static 'js/charts.js' %}" defer></script>
+  <script src="{% asset 'js/app.js' %}" defer></script>
+  <script src="{% asset 'js/charts.js' %}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

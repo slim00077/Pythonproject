@@ -79,7 +79,8 @@ INSTALLED_APPS = [
     'community',
     'notifications',
     'analytics',
-    'ecoassistant',
+    # EcoPulse — live environmental intelligence (no model, no migration)
+    'ecopulse',
 ]
 
 MIDDLEWARE = [
@@ -299,6 +300,28 @@ ECOTEAMS_AI_BACKGROUND = env_bool('ECOTEAMS_AI_BACKGROUND', default=True)
 # Gemini is optional: without a key, Eco-Assistant uses catalogue-only fallback advice.
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-flash-lite-latest').strip()
+
+
+# EcoPulse — environmental intelligence (Open-Meteo data + optional AI explanations)
+# The AI key is read from the environment only; without it the dashboard still works (rules only).
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+# No default on purpose: use a model id listed for your account at https://ai.google.dev/gemini-api/docs/models
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', '').strip()
+# Optional second model tried once when the first one is out of quota (429) or times out (504).
+GEMINI_FALLBACK_MODEL = os.environ.get('GEMINI_FALLBACK_MODEL', '').strip()
+# Gemini 3 reasoning depth: 'low' is ~3x faster than the default for these short structured tasks ('' = model default).
+GEMINI_THINKING_LEVEL = os.environ.get('GEMINI_THINKING_LEVEL', 'low').strip().upper()
+ECOPULSE_AI_TIMEOUT = int(os.environ.get('ECOPULSE_AI_TIMEOUT', '60'))
+ECOPULSE_AI_MAX_PER_HOUR = int(os.environ.get('ECOPULSE_AI_MAX_PER_HOUR', '6'))
+ECOPROOF_AI_MAX_PER_HOUR = int(os.environ.get('ECOPROOF_AI_MAX_PER_HOUR', '10'))
+ECOPULSE_AI_CACHE_SECONDS = int(os.environ.get('ECOPULSE_AI_CACHE_SECONDS', '1800'))
+ECOPULSE_HTTP_TIMEOUT = int(os.environ.get('ECOPULSE_HTTP_TIMEOUT', '8'))
+ECOPULSE_CACHE_SECONDS = int(os.environ.get('ECOPULSE_CACHE_SECONDS', '900'))
+ECOPULSE_FORECAST_DAYS = 3
+ECOPULSE_MAX_PROVIDER_CALLS_PER_HOUR = int(os.environ.get('ECOPULSE_MAX_PROVIDER_CALLS_PER_HOUR', '200'))
+ECOPULSE_DEFAULT_LOCATION = {'name': 'Tunis, Tunisie', 'lat': 36.8065, 'lon': 10.1815}
+# Optional overrides of the classification bands, e.g. {'wind': [35, 55, 75]} (see ecopulse/rules.py).
+ECOPULSE_THRESHOLDS = {}
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

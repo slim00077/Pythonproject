@@ -1,3 +1,4 @@
+import os
 from django import template
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -108,3 +109,18 @@ def progress_ring(value, size=96, stroke=8, label='', tone='lime'):
         'label': label,
         'tone': tone,
     }
+
+
+@register.simple_tag
+def asset(path):
+    """Static URL with a ``?v=<mtime>`` suffix so browsers never keep serving an outdated CSS/JS file."""
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+    url = static(path)
+    found = finders.find(path)
+    if found:
+        try:
+            return f'{url}?v={int(os.path.getmtime(found))}'
+        except OSError:
+            pass
+    return url

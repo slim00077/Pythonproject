@@ -1,23 +1,36 @@
-"""Language-model layer of EcoPulse (Anthropic Messages API, official SDK).
+"""Language-model layer shared by EcoPulse and EcoProof AI (Google Gemini, official ``google-genai`` SDK).
 
 The model only *explains* measurements that ``rules.py`` already validated and
 classified, and drafts challenge proposals. It receives the figures as input,
 is told never to invent or recompute them, and its answer is strictly
-validated before anything is displayed or saved. The API key comes from the
-``ANTHROPIC_API_KEY`` environment variable only.
+validated before anything is displayed or saved. Credentials (``GEMINI_API_KEY``, ``GEMINI_MODEL``) come from the
+server environment only and are never logged or shown to users; diagnostics go to the server log.
 """
 import json
 import logging
 import re
 import time
+from dataclasses import dataclass
 
-import anthropic
 from django.conf import settings
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
 
 from challenges.models import Challenge
 from core.choices import EcoCategory
 
 logger = logging.getLogger('ecoteams.ecopulse')
+
+# google-genai raises transport errors from whichever HTTP client it uses (httpx2 in recent releases, httpx before).
+_HTTP_MODULES = []
+for _name in ('httpx2', 'httpx'):
+    try:
+        _HTTP_MODULES.append(__import__(_name))
+    except ImportError:
+        pass
+TIMEOUT_ERRORS = tuple(m.TimeoutException for m in _HTTP_MODULES) + (TimeoutError,)
+TRANSPORT_ERRORS = tuple(m.TransportError for m in _HTTP_MODULES) + (OSError,)
 
 MAX_PROPOSALS = 2
 MAX_RECOMMENDATIONS = 5
@@ -58,29 +71,102 @@ Réponds UNIQUEMENT par un objet JSON (sans texte autour, sans bloc de code) de 
 }"""
 
 
+UNAVAILABLE_NOTICE = 'Le service d’analyse intelligente est temporairement indisponible. Vous pouvez continuer manuellement.'
+
+
 class AIError(Exception):
-    """The AI step failed; the message is safe to display (French)."""
+    """The AI step failed; the message is safe to display (French, no technical detail)."""
+
+
+class AIRequestRejected(AIError):
+    """The provider refused the request itself (HTTP 400), e.g. an unusable image."""
+
+
+@dataclass
+class ModelReply:
+    """What the rest of the application needs from a Gemini answer (keeps the SDK out of the callers)."""
+    text: str
+    finish_reason: str = 'STOP'
+    output_tokens: int = 0
+
+
+_warned_unconfigured = False
 
 
 def is_configured():
-    return bool(settings.ECOPULSE_AI_API_KEY)
+    """True when both the key and the model id are set. Logs the diagnostic (once) on the server when they are not."""
+    global _warned_unconfigured
+    configured = bool(settings.GEMINI_API_KEY and settings.GEMINI_MODEL)
+    if not configured and not _warned_unconfigured:
+        _warned_unconfigured = True
+        missing = [name for name, value in (('GEMINI_API_KEY', settings.GEMINI_API_KEY),
+                                           ('GEMINI_MODEL', settings.GEMINI_MODEL)) if not value]
+        logger.warning('Gemini AI disabled: environment variable(s) %s not set (see README, section IA).',
+                       ', '.join(missing))
+    return configured
 
 
 def _client():
-    return anthropic.Anthropic(
-        api_key=settings.ECOPULSE_AI_API_KEY, timeout=settings.ECOPULSE_AI_TIMEOUT, max_retries=1,
+    return genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=genai_types.HttpOptions(timeout=int(settings.ECOPULSE_AI_TIMEOUT * 1000)),
     )
+
+
+def _parts(content):
+    """``content`` is a string, or a list mixing strings and ``{'image': bytes, 'mime_type': str}`` items."""
+    if isinstance(content, str):
+        return [content]
+    return [
+        genai_types.Part.from_bytes(data=item['image'], mime_type=item['mime_type']) if isinstance(item, dict) else item
+        for item in content
+    ]
+
+
+def _generate(client, system, content, max_tokens, thinking, model=None):
+    config = genai_types.GenerateContentConfig(
+        system_instruction=system, max_output_tokens=max_tokens, response_mime_type='application/json', temperature=0.4,
+        thinking_config=genai_types.ThinkingConfig(thinking_level=thinking) if thinking else None,
+    )
+    return client.models.generate_content(model=model or settings.GEMINI_MODEL, contents=_parts(content), config=config)
+
+
+def create_message(system, content, max_tokens=4000):
+    """Single call point to Gemini (patched in tests). Returns a ``ModelReply``; raises SDK errors untouched."""
+    client = _client()  # keep a reference: the SDK closes its HTTP client when the Client object is collected
+    models = [settings.GEMINI_MODEL]
+    if settings.GEMINI_FALLBACK_MODEL and settings.GEMINI_FALLBACK_MODEL != settings.GEMINI_MODEL:
+        models.append(settings.GEMINI_FALLBACK_MODEL)
+    for index, model in enumerate(models):
+        try:
+            try:
+                response = _generate(client, system, content, max_tokens, settings.GEMINI_THINKING_LEVEL, model)
+            except genai_errors.ClientError as exc:
+                if not (settings.GEMINI_THINKING_LEVEL and exc.code == 400 and 'thinking' in str(exc.message).lower()):
+                    raise
+                logger.info('Gemini model %s does not accept thinking_level: retrying without it', model)
+                response = _generate(client, system, content, max_tokens, '', model)
+            break
+        except genai_errors.APIError as exc:
+            if index == len(models) - 1 or exc.code not in (429, 504, 404):
+                raise
+            logger.warning('Gemini model %s failed (HTTP %s): switching to fallback model %s', model, exc.code, models[index + 1])
+    candidate = response.candidates[0] if response.candidates else None
+    reason = getattr(getattr(candidate, 'finish_reason', None), 'name', None) or 'STOP'
+    feedback = getattr(response, 'prompt_feedback', None)
+    if feedback is not None and getattr(feedback, 'block_reason', None):
+        reason = 'PROMPT_BLOCKED'
+    try:
+        text = response.text or ''
+    except (ValueError, AttributeError):
+        text = ''
+    usage = getattr(response, 'usage_metadata', None)
+    return ModelReply(text=text, finish_reason=reason, output_tokens=getattr(usage, 'candidates_token_count', 0) or 0)
 
 
 def _create_message(context_json):
-    """Single call point (patched in tests)."""
-    return _client().messages.create(
-        model=settings.ECOPULSE_AI_MODEL,
-        max_tokens=4000,
-        output_config={'effort': 'low'},
-        system=SYSTEM_PROMPT,
-        messages=[{'role': 'user', 'content': f'Conditions validées (JSON) :\n{context_json}'}],
-    )
+    """Single call point of the EcoPulse analysis (patched in tests)."""
+    return create_message(SYSTEM_PROMPT, f'Conditions validées (JSON) :\n{context_json}')
 
 
 def build_context(snapshot, assessment, location_name, events, account_kind):
@@ -127,7 +213,7 @@ def _extract_json(text):
                 return json.loads(text[start:end + 1])
             except ValueError:
                 pass
-    raise AIError('La réponse de l’IA n’a pas pu être interprétée. Réessayez.')
+    raise AIError('La réponse de l’analyse n’a pas pu être interprétée. Réessayez.')
 
 
 def _text(value, limit, required=False):
@@ -150,7 +236,7 @@ def validate_payload(payload, outdoor):
         raise AIError('La réponse de l’IA est invalide. Réessayez.')
     summary = _text(payload.get('summary'), 900, required=True)
     recommendations = []
-    for item in (payload.get('recommendations') or [])[:MAX_RECOMMENDATIONS]:
+    for item in (payload.get('recommendations') or [])[:MAX_RECOMMENDATIONS * 2]:
         if not isinstance(item, dict):
             continue
         title, detail = _text(item.get('title'), 120), _text(item.get('detail'), 400)
@@ -160,10 +246,11 @@ def validate_payload(payload, outdoor):
         if outdoor == 'unsuitable' and setting == 'outdoor':
             continue  # the rules said outdoor is unsuitable: never display such a suggestion
         recommendations.append({'title': title, 'detail': detail, 'setting': setting})
+    recommendations = recommendations[:MAX_RECOMMENDATIONS]
     proposals = []
     categories = set(EcoCategory.values)
     difficulties = set(Challenge.Difficulty.values)
-    for item in (payload.get('proposals') or [])[:MAX_PROPOSALS]:
+    for item in (payload.get('proposals') or [])[:MAX_PROPOSALS * 3]:
         if not isinstance(item, dict):
             continue
         setting = item.get('setting') if item.get('setting') in ('indoor', 'outdoor') else 'indoor'
@@ -185,6 +272,7 @@ def validate_payload(payload, outdoor):
             'duration_days': _bounded_int(item.get('duration_days'), 1, 14, 7),
             'required_actions': _bounded_int(item.get('required_actions'), 1, 10, 3),
         })
+    proposals = proposals[:MAX_PROPOSALS]
     texts = [summary] + [r['title'] + ' ' + r['detail'] for r in recommendations]
     if any(FORBIDDEN_WORDS.search(t) for t in texts):
         raise AIError('La réponse de l’IA a été rejetée (formulation assimilable à une alerte officielle). Réessayez.')
@@ -201,34 +289,70 @@ def _bounded_int(value, low, high, default):
     return max(low, min(high, value))
 
 
-def analyze(context, outdoor):
-    """Call the model and return ``(validated_result, elapsed_seconds)``."""
+BLOCKED_REASONS = {'SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'IMAGE_SAFETY', 'PROMPT_BLOCKED', 'RECITATION'}
+
+
+def _api_error(exc, label):
+    """Translate a Gemini SDK error into an ``AIError`` with a safe French message; details go to the server log."""
+    code = getattr(exc, 'code', None)
+    detail = f'{getattr(exc, "status", "")} {getattr(exc, "message", "")}'.lower()
+    if code in (401, 403) or 'api key' in detail or 'api_key' in detail:
+        logger.error('%s AI: credentials rejected by Gemini (HTTP %s) - check GEMINI_API_KEY', label, code)
+        return AIError(UNAVAILABLE_NOTICE)
+    if code == 429:
+        logger.warning('%s AI: Gemini quota or rate limit reached (HTTP 429)', label)
+        return AIError('Le service d’analyse est très sollicité. Réessayez dans quelques minutes ou continuez manuellement.')
+    if code == 404:
+        logger.error('%s AI: model %r not found for this account - check GEMINI_MODEL', label, settings.GEMINI_MODEL)
+        return AIError(UNAVAILABLE_NOTICE)
+    if code == 400:
+        logger.warning('%s AI: request rejected (HTTP 400): %s', label, getattr(exc, 'status', ''))
+        return AIRequestRejected('Le service d’analyse a refusé la requête.')
+    logger.error('%s AI: Gemini error (HTTP %s)', label, code)
+    return AIError('Le service d’analyse a rencontré une erreur. Réessayez plus tard ou continuez manuellement.')
+
+
+def call_model(call, label='EcoPulse'):
+    """Run ``call()`` and return ``(response_text, reply, elapsed_seconds)``.
+
+    Provider failures become ``AIError`` with a French message that is safe to display (no stack trace, no
+    credential or configuration detail). Shared by every AI feature so errors are handled the same way.
+    """
     if not is_configured():
-        raise AIError('L’analyse IA n’est pas configurée (variable ANTHROPIC_API_KEY absente).')
+        raise AIError(UNAVAILABLE_NOTICE)
     started = time.monotonic()
     try:
-        response = _create_message(json.dumps(context, ensure_ascii=False, sort_keys=True))
-    except anthropic.APITimeoutError as exc:
-        raise AIError(f'L’IA n’a pas répondu en {settings.ECOPULSE_AI_TIMEOUT} s. Réessayez plus tard.') from exc
-    except anthropic.AuthenticationError as exc:
-        logger.error('EcoPulse AI: authentication failed')
-        raise AIError('La clé d’API de l’IA est refusée. Contactez un administrateur.') from exc
-    except anthropic.RateLimitError as exc:
-        raise AIError('Le service d’IA est saturé. Réessayez dans quelques minutes.') from exc
-    except anthropic.APIConnectionError as exc:
-        raise AIError('Le service d’IA est injoignable.') from exc
-    except anthropic.APIStatusError as exc:
-        logger.error('EcoPulse AI: API status %s', exc.status_code)
-        raise AIError('Le service d’IA a renvoyé une erreur. Réessayez plus tard.') from exc
+        try:
+            reply = call()
+        except genai_errors.ServerError as exc:
+            if getattr(exc, 'code', None) != 503:
+                raise
+            logger.info('%s AI: Gemini temporarily overloaded (503), retrying once', label)
+            time.sleep(3)
+            reply = call()
+    except genai_errors.APIError as exc:
+        raise _api_error(exc, label) from exc
+    except TIMEOUT_ERRORS as exc:
+        logger.warning('%s AI: timeout after %.1f s', label, time.monotonic() - started)
+        raise AIError(f'L’analyse n’a pas répondu en {settings.ECOPULSE_AI_TIMEOUT} s. Réessayez plus tard.') from exc
+    except TRANSPORT_ERRORS as exc:
+        logger.warning('%s AI: network error (%s)', label, type(exc).__name__)
+        raise AIError('Le service d’analyse est injoignable pour le moment. Vous pouvez continuer manuellement.') from exc
     elapsed = time.monotonic() - started
-    if response.stop_reason == 'refusal':
-        raise AIError('L’IA a refusé de traiter cette demande.')
-    if response.stop_reason == 'max_tokens':
-        raise AIError('La réponse de l’IA a été tronquée. Réessayez.')
-    text = ''.join(block.text for block in response.content if getattr(block, 'type', '') == 'text')
-    if not text.strip():
-        raise AIError('L’IA n’a renvoyé aucune réponse exploitable.')
+    if reply.finish_reason in BLOCKED_REASONS:
+        raise AIError('L’analyse n’a pas pu traiter cette demande.')
+    if reply.finish_reason == 'MAX_TOKENS':
+        raise AIError('La réponse de l’analyse a été tronquée. Réessayez.')
+    if not (reply.text or '').strip():
+        raise AIError('Le service d’analyse n’a renvoyé aucune réponse exploitable.')
+    return reply.text, reply, elapsed
+
+
+def analyze(context, outdoor):
+    """Call the model and return ``(validated_result, elapsed_seconds)``."""
+    text, response, elapsed = call_model(
+        lambda: _create_message(json.dumps(context, ensure_ascii=False, sort_keys=True)))
     result = validate_payload(_extract_json(text), outdoor)
-    usage = getattr(response, 'usage', None)
-    logger.info('EcoPulse AI answered in %.2f s (output_tokens=%s)', elapsed, getattr(usage, 'output_tokens', '?'))
+    logger.info('EcoPulse AI answered in %.2f s (model=%s, output_tokens=%s)', elapsed, settings.GEMINI_MODEL,
+                response.output_tokens)
     return result, elapsed

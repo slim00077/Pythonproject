@@ -7,8 +7,18 @@ from django.utils import timezone
 from challenges.models import Challenge, ChallengeParticipation
 from core.choices import EcoCategory
 from core.forms import DateInput, ImageInput, StyledFormMixin
+from core.validators import check_image_format
 
 from .models import ActionSubmission, EcoActionType
+
+
+def participating_challenges(user):
+    """Challenges a member can link an action to: the ones they are currently taking part in."""
+    return Challenge.objects.filter(
+        participations__user=user,
+        participations__status=ChallengeParticipation.Status.IN_PROGRESS,
+        status__in=[Challenge.Status.ACTIVE, Challenge.Status.COMPLETED],
+    )
 
 
 class SubmissionForm(StyledFormMixin, forms.ModelForm):
@@ -28,17 +38,16 @@ class SubmissionForm(StyledFormMixin, forms.ModelForm):
         self.user = user
         self.fields['action_type'].queryset = EcoActionType.objects.filter(is_active=True)
         self.fields['action_type'].empty_label = 'Choisissez une action du catalogue'
-        challenges = Challenge.objects.filter(
-            participations__user=user,
-            participations__status=ChallengeParticipation.Status.IN_PROGRESS,
-            status__in=[Challenge.Status.ACTIVE, Challenge.Status.COMPLETED],
-        )
+        challenges = participating_challenges(user)
         if self.instance.pk and self.instance.challenge_id:
             challenges = challenges | Challenge.objects.filter(pk=self.instance.challenge_id)
         self.fields['challenge'].queryset = challenges.distinct()
         self.fields['challenge'].empty_label = 'Aucun défi'
         self.fields['challenge'].help_text = 'Seuls les défis auxquels vous participez sont proposés.'
         self.fields['performed_on'].initial = timezone.localdate()
+
+    def clean_evidence(self):
+        return check_image_format(self.cleaned_data.get('evidence'))
 
     def clean_performed_on(self):
         day = self.cleaned_data['performed_on']

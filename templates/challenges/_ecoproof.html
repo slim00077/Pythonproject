@@ -1,0 +1,63 @@
+{% load eco_tags %}
+{# EcoProof AI: advisory assistant. The analysis is a JSON call (static/js/ecoproof.js); the submission is a normal POST form. #}
+<section class="holo ecoproof" id="ecoproof" aria-labelledby="ecoproof-title">
+  <div class="ecoproof-head">
+    <div>
+      <span class="eyebrow">{% icon 'sparkles' 14 %} EcoProof AI</span>
+      <h2 id="ecoproof-title">EcoProof AI — Assistant intelligent de vérification des actions écologiques</h2>
+      <p>Analysez les informations de votre action écologique, améliorez votre déclaration et préparez votre preuve avant de la soumettre à validation.</p>
+      <p class="ecoproof-mode small">
+        {% if ecoproof_ai %}<span class="pill tone-success">{% icon 'sparkles' 12 %} Analyse intelligente disponible</span>
+        {% else %}<span class="pill tone-warning">{% icon 'info' 12 %} Mode manuel</span>{% endif %}
+        <span class="muted">L’IA conseille, elle ne valide jamais : seule la modération attribue des points.</span>
+      </p>
+    </div>
+    <button type="button" class="btn btn-primary" id="ecoproof-toggle" aria-expanded="{% if ecoproof_open %}true{% else %}false{% endif %}" aria-controls="ecoproof-panel">
+      {% icon 'sparkles' 16 %} <span data-label>{% if ecoproof_open %}Réduire EcoProof AI{% else %}Ouvrir EcoProof AI{% endif %}</span>
+    </button>
+  </div>
+
+  <div id="ecoproof-panel" {% if not ecoproof_open %}hidden{% endif %}
+       data-analyze-url="{% url 'challenges:ecoproof_analyze' %}" data-csrf="{{ csrf_token }}" data-ai="{% if ecoproof_ai %}1{% else %}0{% endif %}">
+    {% if not ecoproof_ai %}
+      <div class="alert alert-info mb-3" role="note">{% icon 'info' %}<div><p class="mb-0">{{ ecoproof_unavailable }} Les vérifications de base de votre déclaration restent disponibles.</p></div></div>
+    {% endif %}
+    <form method="post" action="{% url 'challenges:ecoproof_submit' %}" enctype="multipart/form-data" id="ecoproof-form" novalidate>
+      {% csrf_token %}
+      {% if ecoproof_form.non_field_errors %}
+        <div class="alert alert-danger form-errors mb-3" role="alert">{% icon 'alert-triangle' %}
+          <div>{% for error in ecoproof_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div></div>
+      {% endif %}
+      <div class="form-grid">
+        {% include 'partials/field.html' with field=ecoproof_form.challenge %}
+        {% include 'partials/field.html' with field=ecoproof_form.action_type %}
+        {% include 'partials/field.html' with field=ecoproof_form.performed_on %}
+        {% include 'partials/field.html' with field=ecoproof_form.quantity %}
+        {% include 'partials/field.html' with field=ecoproof_form.description full=True %}
+        {% include 'partials/field.html' with field=ecoproof_form.evidence full=True %}
+      </div>
+      <p class="small muted mt-2">Seules les informations ci-dessus (et la photo, sans ses métadonnées) sont transmises à l’IA, depuis le serveur.</p>
+
+      <div class="ecoproof-actions">
+        <button type="button" class="btn btn-secondary" id="ecoproof-analyze">
+          {% icon 'sparkles' 16 %} Analyser ma preuve avec EcoProof AI <span class="spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="ep-loading" id="ecoproof-loading" hidden role="status" aria-live="polite">
+        <div class="ep-skeleton"></div><div class="ep-skeleton short"></div><div class="ep-skeleton"></div>
+        <p class="muted small">Analyse en cours… cela peut prendre une dizaine de secondes.</p>
+      </div>
+      <div class="alert alert-danger mt-3" id="ecoproof-error" hidden role="alert">{% icon 'alert-triangle' %}<div><p class="mb-0" id="ecoproof-error-text"></p></div></div>
+      <div id="ecoproof-results" class="ecoproof-results" hidden aria-live="polite"></div>
+
+      <div class="ecoproof-submit">
+        <p class="small muted mb-0">Relisez et corrigez les champs ci-dessus : c’est votre déclaration qui sera examinée, pas la suggestion de l’IA.
+          Aucun point n’est attribué avant la décision d’un modérateur.</p>
+        <button type="submit" class="btn btn-primary" id="ecoproof-submit">
+          <span class="spinner" aria-hidden="true"></span>{% icon 'send' 16 %} Soumettre à validation
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

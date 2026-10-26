@@ -5,15 +5,19 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from actions import services as action_services
+from actions.forms import SubmissionForm
 from actions.models import ActionSubmission
 from core.decorators import any_permission_required
 from core.exceptions import BusinessRuleError
 from core.permissions import REVIEW_CHALLENGES
+from ecopulse import ai, ecoproof
+from ecopulse.forms import EcoProofForm
 
 from . import services
 from .forms import ChallengeFilterForm, ChallengeForm, ChallengeReviewForm
@@ -29,8 +33,7 @@ def _visible_challenge(request, slug):
     return challenge
 
 
-@login_required
-def challenge_list(request):
+def _render_list(request, ecoproof_form=None):
     form = ChallengeFilterForm(request.GET or None)
     challenges = Challenge.objects.annotate(participant_total=Count('participations', filter=ACTIVE_PARTICIPANTS))
     scope = request.GET.get('scope', '')
@@ -64,7 +67,53 @@ def challenge_list(request):
         ChallengeParticipation.objects.filter(user=request.user, challenge__in=list(page))
         .values_list('challenge_id', 'status')
     )
-    return render(request, 'challenges/challenge_list.html', {'form': form, 'page': page, 'mine': mine, 'scope': scope})
+    if ecoproof_form is None:
+        initial = {'performed_on': timezone.localdate()}
+        selected = Challenge.objects.filter(slug=request.GET.get('challenge', '')).first()
+        if selected:
+            initial['challenge'] = selected
+        ecoproof_form = SubmissionForm(user=request.user, initial=initial)
+    return render(request, 'challenges/challenge_list.html', {
+        'form': form, 'page': page, 'mine': mine, 'scope': scope, 'ecoproof_form': ecoproof_form,
+        'ecoproof_ai': ai.is_configured(), 'ecoproof_open': request.method == 'POST' or 'challenge' in request.GET,
+        'ecoproof_unavailable': ai.UNAVAILABLE_NOTICE,
+    })
+
+
+@login_required
+def challenge_list(request):
+    return _render_list(request)
+
+
+@login_required
+@require_POST
+def ecoproof_analyze(request):
+    """JSON endpoint of EcoProof AI: advisory analysis of a declaration draft. Saves nothing."""
+    form = EcoProofForm(request.POST, request.FILES, user=request.user)
+    if not form.is_valid():
+        return JsonResponse({
+            'ok': False, 'error': 'Corrigez les champs signalés avant de lancer l’analyse.',
+            'errors': {name: [str(e) for e in errors] for name, errors in form.errors.items()},
+        }, status=400)
+    return JsonResponse(ecoproof.run(request.user, form.cleaned_data))
+
+
+@login_required
+@require_POST
+def ecoproof_submit(request):
+    """Submit the (possibly AI-assisted, user-edited) declaration for moderation: always ``pending``, 0 point."""
+    form = SubmissionForm(request.POST, request.FILES, user=request.user)
+    if form.is_valid():
+        try:
+            submission = action_services.create_submission(request.user, form)
+        except BusinessRuleError as error:
+            form.add_error(None, error.message)
+        else:
+            messages.success(request, 'Action soumise à validation. Un modérateur l’examinera avant toute attribution de points.')
+            return redirect(submission)
+    messages.error(request, 'Votre action n’a pas été envoyée : corrigez les champs signalés. '
+                            'Si vous aviez joint une photo, sélectionnez-la à nouveau.')
+    return _render_list(request, ecoproof_form=form)
 
 
 @login_required

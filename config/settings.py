@@ -248,10 +248,16 @@ ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOUR
 
 # EcoPulse — environmental intelligence (Open-Meteo data + optional AI explanations)
 # The AI key is read from the environment only; without it the dashboard still works (rules only).
-ECOPULSE_AI_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '').strip()
-ECOPULSE_AI_MODEL = os.environ.get('ECOPULSE_AI_MODEL', 'claude-opus-5-5').strip()
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+# No default on purpose: use a model id listed for your account at https://ai.google.dev/gemini-api/docs/models
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', '').strip()
+# Optional second model tried once when the first one is out of quota (429) or times out (504).
+GEMINI_FALLBACK_MODEL = os.environ.get('GEMINI_FALLBACK_MODEL', '').strip()
+# Gemini 3 reasoning depth: 'low' is ~3x faster than the default for these short structured tasks ('' = model default).
+GEMINI_THINKING_LEVEL = os.environ.get('GEMINI_THINKING_LEVEL', 'low').strip().upper()
 ECOPULSE_AI_TIMEOUT = int(os.environ.get('ECOPULSE_AI_TIMEOUT', '60'))
 ECOPULSE_AI_MAX_PER_HOUR = int(os.environ.get('ECOPULSE_AI_MAX_PER_HOUR', '6'))
+ECOPROOF_AI_MAX_PER_HOUR = int(os.environ.get('ECOPROOF_AI_MAX_PER_HOUR', '10'))
 ECOPULSE_AI_CACHE_SECONDS = int(os.environ.get('ECOPULSE_AI_CACHE_SECONDS', '1800'))
 ECOPULSE_HTTP_TIMEOUT = int(os.environ.get('ECOPULSE_HTTP_TIMEOUT', '8'))
 ECOPULSE_CACHE_SECONDS = int(os.environ.get('ECOPULSE_CACHE_SECONDS', '900'))

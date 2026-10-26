@@ -279,3 +279,32 @@ def rule_based_advice(assessment):
     if not advice:
         advice.append('Conditions favorables : une mission en extérieur (mobilité douce, nettoyage, plantation) est envisageable.')
     return advice
+
+
+INDOOR_MISSIONS = [
+    {'title': 'Chasse aux veilles électriques', 'category': 'energy', 'difficulty': 'easy', 'setting': 'indoor',
+     'description': 'Quand il fait mauvais dehors, réduisez la consommation cachée de votre logement ou bureau.',
+     'instructions': ['Repérez les appareils laissés en veille', 'Branchez-les sur des multiprises à interrupteur',
+                      'Éteignez-les chaque soir pendant la durée du défi'], 'duration_days': 5, 'required_actions': 3},
+    {'title': 'Tri et anti-gaspillage à la maison', 'category': 'recycling', 'difficulty': 'easy', 'setting': 'indoor',
+     'description': 'Profitez d’une journée à l’intérieur pour organiser le tri et réduire les déchets.',
+     'instructions': ['Installez un bac de tri par matière', 'Triez vos déchets pendant plusieurs jours',
+                      'Cuisinez un repas avec des restes'], 'duration_days': 7, 'required_actions': 3},
+]
+OUTDOOR_MISSIONS = [
+    {'title': 'Semaine de mobilité douce', 'category': 'transport', 'difficulty': 'easy', 'setting': 'outdoor',
+     'description': 'Les conditions sont favorables : remplacez vos trajets motorisés courts par la marche ou le vélo.',
+     'instructions': ['Choisissez 3 trajets courts habituels', 'Faites-les à pied ou à vélo',
+                      'Notez les kilomètres évités'], 'duration_days': 7, 'required_actions': 3},
+]
+
+
+def suggested_missions(assessment):
+    """Fixed mission templates matched to the conditions (outdoor only when the rules allow it)."""
+    if assessment['outdoor'] == 'unknown':
+        return []
+    if assessment['outdoor'] == 'suitable':
+        return [dict(OUTDOOR_MISSIONS[0]), dict(INDOOR_MISSIONS[1])]
+    if assessment['outdoor'] == 'caution':
+        return [dict(INDOOR_MISSIONS[1]), dict(OUTDOOR_MISSIONS[0], duration_days=5)]
+    return [dict(m) for m in INDOOR_MISSIONS]

@@ -1,0 +1,49 @@
+{
+  "run_at": "2026-10-26T00:06:59.559082+00:00",
+  "ai_model": null,
+  "ai_run": false,
+  "scenarios": [
+    {
+      "id": "clear_day",
+      "rules_ok": true,
+      "rules_ms": 0.233,
+      "outdoor": "suitable"
+    },
+    {
+      "id": "heatwave",
+      "rules_ok": true,
+      "rules_ms": 0.081,
+      "outdoor": "unsuitable"
+    },
+    {
+      "id": "storm",
+      "rules_ok": true,
+      "rules_ms": 0.06,
+      "outdoor": "unsuitable"
+    },
+    {
+      "id": "polluted_air",
+      "rules_ok": true,
+      "rules_ms": 0.065,
+      "outdoor": "unsuitable"
+    },
+    {
+      "id": "moderate_wind",
+      "rules_ok": true,
+      "rules_ms": 0.108,
+      "outdoor": "caution"
+    },
+    {
+      "id": "cold_snap",
+      "rules_ok": true,
+      "rules_ms": 0.106,
+      "outdoor": "unsuitable"
+    },
+    {
+      "id": "missing_air_data",
+      "rules_ok": true,
+      "rules_ms": 0.077,
+      "outdoor": "suitable"
+    }
+  ]
+}

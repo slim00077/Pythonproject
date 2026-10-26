@@ -2,9 +2,11 @@
 {% load static eco_tags %}
 {% block title %}EcoPulse{% endblock %}
 {% block body_class %}app-body theme-{{ nav.kind|default:'student' }} ecopulse-page{% endblock %}
-{% block head %}<link rel="stylesheet" href="{% static 'css/ecopulse.css' %}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% asset 'css/ecopulse.css' %}">{% endblock %}
 
 {% block content %}
+<div class="page-head"><div><span class="eyebrow">{% icon 'flag' 14 %} Défis écologiques</span><h1>Défis et conditions en direct</h1></div></div>
+<p class="mb-3"><a href="{% url 'challenges:list' %}">← Retour aux défis</a></p>
 <section class="holo banner ep-banner">
   <div>
     <span class="eyebrow">{% icon 'globe' 14 %} EcoPulse · intelligence environnementale</span>
@@ -46,6 +48,40 @@
 {% if meta.error %}<div class="alert alert-warning mb-3">{% icon 'alert-triangle' %}<div><p class="mb-0"><strong>Affichage de données en cache obsolètes.</strong> {{ meta.error }}</p></div></div>{% endif %}
 {% for name in snapshot.missing_services %}<div class="alert alert-warning mb-3">{% icon 'alert-triangle' %}<div><p class="mb-0">Service « {{ name }} » indisponible : les indicateurs correspondants sont marqués « Donnée indisponible ».</p></div></div>{% endfor %}
 {% if snapshot.warnings %}<div class="alert alert-info mb-3">{% icon 'info' %}<div><p class="mb-0">Contrôle de qualité : {{ snapshot.warnings|join:' ' }}</p></div></div>{% endif %}
+
+
+<div class="bento">
+  <div class="span-6 stack">
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'shield-check' %} Recommandations</h2><p class="card-sub">Règles fixes et vérifiables — sans IA</p></div></div>
+      <ul class="ep-list">{% for a in advice %}<li>{{ a }}</li>{% endfor %}</ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>{% icon 'flag' %} Missions adaptées aux conditions</h2><p class="card-sub">Enregistrez-les en brouillon ou soumettez-les à validation</p></div></div>
+      {% if rule_batch %}{% include 'ecopulse/_missions.html' with batch=rule_batch %}{% else %}<p class="muted small mb-0">Aucune mission proposée : données insuffisantes.</p>{% endif %}
+    </div>
+  </div>
+  <div class="span-6">
+    <div class="card card-glow ep-ai" id="ep-ai" data-url="{% url 'ecopulse:analysis' %}?hours={{ hours }}" data-csrf="{{ csrf_token }}" data-save-url="{% url 'ecopulse:save_proposal' %}">
+      <div class="card-head"><div><h2>{% icon 'sparkles' %} Analyse IA et missions adaptatives</h2>
+        <p class="card-sub">Explique les valeurs mesurées et propose des défis (aucune publication automatique)</p></div></div>
+      <button class="btn btn-primary" type="button" id="ep-ai-run" aria-describedby="ep-ai-help">{% icon 'sparkles' 16 %} Générer l’analyse IA <span class="spinner" aria-hidden="true"></span></button>
+      {% if not ai_enabled %}
+        <div class="alert alert-info mt-2" id="ep-ai-help">{% icon 'info' %}<div><p class="mb-0">Le service d’analyse intelligente est temporairement indisponible. Les recommandations et missions par règles ci-contre restent disponibles.</p></div></div>
+      {% else %}
+        <span class="sr-only" id="ep-ai-help">Lance l’analyse IA des conditions actuelles ; cela peut prendre une dizaine de secondes.</span>
+      {% endif %}
+      <div class="ep-loading" id="ep-ai-loading" hidden role="status" aria-live="polite">
+        <div class="ep-skeleton"></div><div class="ep-skeleton short"></div><div class="ep-skeleton"></div>
+        <p class="muted small">Analyse en cours… cela peut prendre une dizaine de secondes.</p>
+      </div>
+      <div class="alert alert-danger mt-2" id="ep-ai-error" hidden role="alert">{% icon 'alert-triangle' %}<div><p class="mb-0" id="ep-ai-error-text"></p></div></div>
+      <div id="ep-ai-result" hidden></div>
+      <p class="small muted mt-2 mb-0">{% icon 'info' 12 %} Interprétation générée par IA à partir de valeurs validées : elle peut contenir des erreurs et ne remplace
+        <strong>jamais</strong> une alerte officielle ni l’avis des autorités ou de professionnels. Les défis proposés sont des brouillons soumis à validation humaine ; les points sont fixés par le validateur.</p>
+    </div>
+  </div>
+</div>
 
 <div class="bento">
   <div class="span-5">
@@ -121,13 +157,7 @@
     {% if charts.wind %}<div class="chart" data-chart="bar" data-source="ep-wind" data-unit="km/h" data-label="Rafales"></div>{% else %}<p class="muted">Aucune donnée.</p>{% endif %}</div>
 </div>
 
-<div class="bento">
-  <div class="span-6 stack">
-    <div class="card">
-      <div class="card-head"><div><h2>{% icon 'shield-check' %} Recommandations des règles</h2><p class="card-sub">Fixes et vérifiables — sans IA</p></div></div>
-      <ul class="ep-list">{% for a in advice %}<li>{{ a }}</li>{% endfor %}</ul>
-    </div>
-    <div class="card">
+<div class="card mb-3">
       <div class="card-head"><div><h2>{% icon 'calendar' %} Événements prévus</h2><p class="card-sub">Vos événements en présentiel couverts par la prévision</p></div></div>
       {% for e in events %}
         <div class="ep-event tone-border-{{ e.tone }}">
@@ -141,28 +171,6 @@
         <p class="muted small mb-0">Aucun événement en présentiel dans la période couverte.</p>
       {% endfor %}
     </div>
-  </div>
-
-  <div class="span-6">
-    <div class="card card-glow ep-ai" id="ep-ai" data-url="{% url 'ecopulse:analysis' %}?hours={{ hours }}" data-save-url="{% url 'ecopulse:save_proposal' %}" data-csrf="{{ csrf_token }}">
-      <div class="card-head"><div><h2>{% icon 'sparkles' %} Analyse IA et missions adaptatives</h2>
-        <p class="card-sub">Explique les valeurs ci-dessus et propose des défis (aucune publication automatique)</p></div></div>
-      {% if ai_enabled %}
-        <button class="btn btn-primary" type="button" id="ep-ai-run">{% icon 'sparkles' 16 %} Générer l’analyse IA <span class="spinner" aria-hidden="true"></span></button>
-        <div class="ep-loading" id="ep-ai-loading" hidden role="status" aria-live="polite">
-          <div class="ep-skeleton"></div><div class="ep-skeleton short"></div><div class="ep-skeleton"></div>
-          <p class="muted small">Analyse en cours… cela peut prendre une dizaine de secondes.</p>
-        </div>
-        <div class="alert alert-danger" id="ep-ai-error" hidden role="alert">{% icon 'alert-triangle' %}<div><p class="mb-0" id="ep-ai-error-text"></p></div></div>
-        <div id="ep-ai-result" hidden></div>
-      {% else %}
-        <div class="alert alert-info">{% icon 'info' %}<div><p class="mb-0">L’analyse IA n’est pas activée (variable d’environnement <code>ANTHROPIC_API_KEY</code> absente). Les données et les recommandations par règles restent disponibles.</p></div></div>
-      {% endif %}
-      <p class="small muted mt-2 mb-0">{% icon 'info' 12 %} Interprétation générée par IA à partir de valeurs validées : elle peut contenir des erreurs et ne remplace
-        <strong>jamais</strong> une alerte officielle ni l’avis des autorités ou de professionnels. Les défis proposés sont des brouillons soumis à validation humaine ; les points sont fixés par le validateur.</p>
-    </div>
-  </div>
-</div>
 
 <footer class="ep-attribution small muted">
   Sources : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (prévisions et qualité de l’air, licence
@@ -172,4 +180,4 @@
 {% endif %}
 {% endblock %}
 
-{% block scripts %}<script src="{% static 'js/ecopulse.js' %}" defer></script>{% endblock %}
+{% block scripts %}<script src="{% asset 'js/ecopulse.js' %}" defer></script>{% endblock %}

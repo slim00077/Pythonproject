@@ -427,6 +427,43 @@ Lancer les tests d’un seul module : `python manage.py test teams` (ou `challen
 
 ---
 
+## EcoPulse — intelligence environnementale en direct
+
+Page `/ecopulse/` (lien « EcoPulse » dans chaque menu latéral). Application `ecopulse/` **sans modèle ni migration**.
+
+- **Données** : prévisions et qualité de l'air d'[Open-Meteo](https://open-meteo.com/) (CC BY 4.0, usage non commercial),
+  timeout 8 s, cache 15 min, copie obsolète 6 h en secours, quota global de 200 appels/heure.
+- **Règles** (`ecopulse/rules.py`) : validation des valeurs, bandes de classification documentées et configurables
+  (`ECOPULSE_THRESHOLDS`). Ce sont des repères indicatifs, **pas des alertes officielles**.
+- **Lieu** : formulaire (ville géocodée ou coordonnées), gardé en session ; par défaut la ville de l'organisation, sinon Tunis.
+- **IA** (`ecopulse/ai.py`, SDK officiel `google-genai`, Google Gemini) : explique les valeurs validées et propose des défis.
+  Variables `GEMINI_API_KEY` et `GEMINI_MODEL` (voir « Configurer l'IA » ci-dessous) ; sans elles, tout le reste fonctionne.
+  6 analyses/heure/utilisateur, résultats mis en cache 30 min.
+- **Défis proposés** : enregistrés via le workflow existant (brouillon, ou « en attente de validation »), 0 point proposé ;
+  un valideur publie et fixe les points. Rien n'est publié ni récompensé automatiquement.
+- **EcoProof AI** (page « Défis », `ecopulse/ecoproof.py`) : assistant **consultatif** qui aide à préparer une déclaration
+  d'action (catégorie, informations manquantes, preuves à ajouter, points pour le modérateur). Il réutilise le client Gemini
+  d'EcoPulse (`ECOPROOF_AI_MAX_PER_HOUR`=10). Sans IA : vérifications de complétude déterministes uniquement. L'IA ne valide
+  rien : la déclaration est envoyée par un POST classique (`ActionSubmission` en attente, 0 point) et seule la modération
+  existante attribue des points. Les photos sont validées côté serveur (contenu réel JPEG/PNG/WebP, 5 Mo) puis ré-encodées
+  sans métadonnées avant envoi à Gemini.
+
+### Configurer l'IA (développeurs)
+
+1. `pip install -r requirements.txt` (ou `pip install google-genai`).
+2. Créez une clé sur <https://aistudio.google.com/apikey> et choisissez un modèle disponible pour votre compte
+   (<https://ai.google.dev/gemini-api/docs/models>). Le code n'impose aucun modèle par défaut.
+3. Dans `.env` (jamais versionné) : `GEMINI_API_KEY=...` et `GEMINI_MODEL=...`, puis redémarrez le serveur.
+4. (Facultatif) `GEMINI_THINKING_LEVEL=low` (défaut) accélère les réponses ; mettez une valeur vide si votre modèle ne gère pas ce réglage.
+5. Vérifiez : `python manage.py check_gemini` (une requête minimale ; affiche la durée réelle).
+
+Les utilisateurs ne voient jamais de détail technique : si l'IA n'est pas configurée ou échoue, ils lisent « Le service
+d'analyse intelligente est temporairement indisponible. Vous pouvez continuer manuellement. ». La cause réelle est dans les
+journaux du serveur (logger `ecoteams.ecopulse`) : variable absente, clé refusée (401/403 ou « API key not valid »), modèle
+introuvable (404, vérifiez `GEMINI_MODEL`), quota atteint (429), délai dépassé (`ECOPULSE_AI_TIMEOUT`), réponse bloquée ou mal formée.
+Le « créateur de défis EcoQuest » n'existe pas dans le projet : les missions proposées par EcoPulse en tiennent lieu.
+- **Évaluation** : `ecopulse/eval/` (voir son README). Tests : `python manage.py test ecopulse`.
+
 ## 11. Dépannage
 
 | Problème | Solution |

@@ -61,7 +61,7 @@ def dashboard(request):
         period_end=rules.local_time_text(snapshot, assessment['end_ts']),
         charts=rules.chart_series(snapshot, now_ts, hours),
         fetched_text=rules.local_time_text(snapshot, int(datetime.fromisoformat(snapshot['fetched_at']).timestamp())),
-        coverage_hours=assessment['hours'],
+        coverage_hours=assessment['hours'], rule_batch=services.rule_batch(request.session, snapshot, assessment),
     )
     return render(request, 'ecopulse/dashboard.html', context)
 
@@ -104,6 +104,8 @@ def refresh(request):
 @require_POST
 def ai_analysis(request):
     """JSON endpoint called by the dashboard after the page has rendered (loading state in the browser)."""
+    if not ai.is_configured():
+        return JsonResponse({'ok': False, 'error': ai.UNAVAILABLE_NOTICE}, status=503)
     location = services.current_location(request)
     try:
         snapshot, _meta = services.get_snapshot(location)
@@ -125,14 +127,20 @@ def ai_analysis(request):
 @login_required
 @require_POST
 def save_proposal(request):
+    """POST/Redirect/GET: save a proposed mission as a draft or submit it for validation (never publishes)."""
     try:
         index = int(request.POST.get('index', ''))
     except ValueError:
-        return JsonResponse({'ok': False, 'error': 'Proposition invalide.'}, status=400)
+        messages.error(request, 'Proposition invalide.')
+        return redirect('ecopulse:dashboard')
     try:
         challenge = services.save_proposal(
             request.user, request.session, request.POST.get('batch', ''), index, request.POST.get('mode', ''))
     except BusinessRuleError as exc:
-        return JsonResponse({'ok': False, 'error': exc.message}, status=400)
-    label = 'soumis à validation' if challenge.status == challenge.Status.PENDING else 'enregistré comme brouillon'
-    return JsonResponse({'ok': True, 'url': challenge.get_absolute_url(), 'message': f'Défi {label}.'})
+        messages.error(request, exc.message)
+        return redirect('ecopulse:dashboard')
+    if challenge.status == challenge.Status.PENDING:
+        messages.success(request, 'Défi soumis à validation. Un valideur l’examinera avant toute publication.')
+    else:
+        messages.success(request, 'Défi enregistré comme brouillon. Soumettez-le à validation lorsqu’il est prêt.')
+    return redirect(challenge)

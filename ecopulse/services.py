@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -100,7 +101,7 @@ def _spend_provider_calls(count):
         raise BusinessRuleError('Quota horaire de requêtes météo atteint : réessayez dans quelques minutes.')
 
 
-def _hit_limit(key, limit, window_seconds):
+def hit_limit(key, limit, window_seconds):
     """Return True if ``key`` already reached ``limit`` hits in the window (and register this hit)."""
     cache.add(key, 0, window_seconds)
     try:
@@ -160,7 +161,7 @@ def get_snapshot(location, force=False):
 
 def request_refresh(user, location):
     """Forced refresh, limited to once per minute and per user."""
-    if _hit_limit(f'ecopulse:refresh:{user.pk}', 1, FORCE_REFRESH_COOLDOWN):
+    if hit_limit(f'ecopulse:refresh:{user.pk}', 1, FORCE_REFRESH_COOLDOWN):
         raise BusinessRuleError('Actualisation déjà demandée à l’instant : patientez une minute.')
     return get_snapshot(location, force=True)
 
@@ -213,23 +214,22 @@ def run_ai_analysis(user, request_session, snapshot, assessment, events, account
     if cached is not None:
         result, elapsed, from_cache = cached, 0.0, True
     else:
-        if _hit_limit(f'ecopulse:ai:user:{user.pk}', settings.ECOPULSE_AI_MAX_PER_HOUR, 3600):
+        if hit_limit(f'ecopulse:ai:user:{user.pk}', settings.ECOPULSE_AI_MAX_PER_HOUR, 3600):
             raise ai.AIError('Limite de demandes d’analyse IA atteinte pour cette heure. Réessayez plus tard.')
         result, elapsed = ai.analyze(context, assessment['outdoor'])
         cache.set(context_key, result, settings.ECOPULSE_AI_CACHE_SECONDS)
         from_cache = False
-    batch = {
-        'id': uuid.uuid4().hex, 'location': location_name, 'generated_at': timezone.now().isoformat(),
-        'items': [{**proposal, 'saved_slug': ''} for proposal in result['proposals']],
-    }
-    request_session[SESSION_PROPOSALS] = batch
-    return {**result, 'batch_id': batch['id'], 'elapsed': round(elapsed, 2), 'from_cache': from_cache,
-            'model': settings.ECOPULSE_AI_MODEL}
+    batch = _store_batch(request_session, result['proposals'], location_name, 'ai')
+    fetched = int(datetime.fromisoformat(snapshot['fetched_at']).timestamp())
+    basis = f'{location_name} · mesures du {rules.local_time_text(snapshot, fetched)} (Open-Meteo), classées par les règles EcoTeams'
+    return {**result, 'basis': basis, 'batch_id': batch['id'], 'elapsed': round(elapsed, 2), 'from_cache': from_cache,
+            'model': settings.GEMINI_MODEL}
 
 
 # --- Saving a proposal as a regular challenge ------------------------------------------------------
 
 
+@transaction.atomic
 def save_proposal(user, session, batch_id, index, mode):
     """Create a draft (or a pending challenge) from a proposal held server-side.
 
@@ -238,9 +238,10 @@ def save_proposal(user, session, batch_id, index, mode):
     published and no point is awarded here — reviewers decide (and set the
     reward) in the usual approval queue.
     """
-    batch = session.get(SESSION_PROPOSALS)
-    if not batch or batch.get('id') != batch_id:
-        raise BusinessRuleError('Cette proposition a expiré : relancez l’analyse.')
+    batches = session.get(SESSION_PROPOSALS)
+    batch = batches.get(batch_id) if isinstance(batches, dict) else None
+    if not batch:
+        raise BusinessRuleError('Cette proposition a expiré : actualisez la page.')
     try:
         item = batch['items'][index]
     except (IndexError, TypeError):
@@ -250,7 +251,8 @@ def save_proposal(user, session, batch_id, index, mode):
     if mode not in ('draft', 'pending'):
         raise BusinessRuleError('Action inconnue.')
     today = timezone.localdate()
-    note = (f'\n\nProposition générée par EcoPulse IA à partir des conditions environnementales de '
+    origin = 'EcoPulse IA' if batch.get('source') == 'ai' else 'EcoPulse (règles)'
+    note = (f'\n\nProposition générée par {origin} à partir des conditions environnementales de '
             f'{batch["location"]} ({today:%d/%m/%Y}). Relecture humaine requise avant publication.')
     form = ChallengeForm(data={
         'title': item['title'], 'category': item['category'], 'difficulty': item['difficulty'],
@@ -265,6 +267,36 @@ def save_proposal(user, session, batch_id, index, mode):
     if mode == 'pending':
         challenge_services.submit_for_review(user, challenge)
     item['saved_slug'] = challenge.slug
-    session[SESSION_PROPOSALS] = batch
+    session[SESSION_PROPOSALS] = batches
     session.modified = True
     return challenge
+
+
+# --- Proposal batches (server-side, so the browser can never alter a mission) ----------------------
+
+
+def _store_batch(session, proposals, location_name, source, batch_id=None):
+    batches = session.get(SESSION_PROPOSALS)
+    if not isinstance(batches, dict):
+        batches = {}
+    batch_id = batch_id or uuid.uuid4().hex
+    previous = {i['title']: i.get('saved_slug', '') for i in batches.get(batch_id, {}).get('items', [])}
+    batch = {
+        'id': batch_id, 'location': location_name, 'source': source, 'generated_at': timezone.now().isoformat(),
+        'items': [{**p, 'saved_slug': previous.get(p['title'], '')} for p in proposals],
+    }
+    batches[batch_id] = batch
+    for old in sorted(batches, key=lambda k: batches[k]['generated_at'])[:-6]:
+        del batches[old]
+    session[SESSION_PROPOSALS] = batches
+    session.modified = True
+    return batch
+
+
+def rule_batch(session, snapshot, assessment):
+    """Deterministic mission suggestions (no AI) for the current conditions, stored as a reviewable batch."""
+    proposals = rules.suggested_missions(assessment)
+    if not proposals:
+        return None
+    key = hashlib.sha1(f'{_round_key(snapshot["location"])}:{assessment["outdoor"]}:{timezone.localdate()}'.encode()).hexdigest()[:16]
+    return _store_batch(session, proposals, snapshot['location']['name'], 'rules', batch_id='rules-' + key)

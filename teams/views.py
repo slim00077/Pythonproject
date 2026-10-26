@@ -12,6 +12,11 @@ from analytics.services import annotate_team_stats, team_dashboard, team_leaderb
 from core.exceptions import BusinessRuleError
 
 from . import services
+from .ai import (
+    TeamActivityGenerationError,
+    generate_team_activity_ideas,
+    generate_team_coach_advice,
+)
 from .forms import TeamFilterForm, TeamForm
 from .models import Membership, Team
 
@@ -80,6 +85,10 @@ def team_detail(request, slug):
     team = get_object_or_404(Team.objects.select_related('captain'), slug=slug)
     if not services.can_view_team(request.user, team):
         raise Http404
+    return _render_team_detail(request, team)
+
+
+def _render_team_detail(request, team, activity_ideas=None, coach_advice=None):
     membership = services.get_membership(request.user)
     is_member = membership is not None and membership.team_id == team.pk
     stats = team_dashboard(team)
@@ -92,7 +101,41 @@ def team_detail(request, slug):
         'can_manage': services.can_manage_team(request.user, team),
         'can_join': membership is None and team.accepts_members and services.can_join_team(request.user, team),
         'my_membership': membership,
+        'activity_ideas': activity_ideas,
+        'coach_advice': coach_advice,
     })
+
+
+@login_required
+@require_POST
+def team_activity_ideas(request, slug):
+    team = get_object_or_404(Team.objects.select_related('captain'), slug=slug)
+    if not services.can_view_team(request.user, team):
+        raise Http404
+    try:
+        activity_ideas = generate_team_activity_ideas(team)
+    except TeamActivityGenerationError as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(request, 'Les idées d’activités ont été générées avec Gemini.')
+        return _render_team_detail(request, team, activity_ideas=activity_ideas)
+    return _render_team_detail(request, team)
+
+
+@login_required
+@require_POST
+def team_coach(request, slug):
+    team = get_object_or_404(Team.objects.select_related('captain'), slug=slug)
+    if not services.can_view_team(request.user, team):
+        raise Http404
+    stats = team_dashboard(team)
+    try:
+        coach_advice = generate_team_coach_advice(team, stats)
+    except TeamActivityGenerationError as error:
+        messages.error(request, str(error))
+    else:
+        return _render_team_detail(request, team, coach_advice=coach_advice)
+    return _render_team_detail(request, team)
 
 
 def _managed_team(request, slug):

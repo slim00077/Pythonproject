@@ -136,6 +136,7 @@ des gabarits partagés et du CSS, et chaque membre maintient les tests de son mo
 - **MySQL/MariaDB via XAMPP** (base principale) — PostgreSQL et SQLite restent disponibles en repli
 - HTML, CSS et **JavaScript natif** sans étape de build ; graphiques SVG maison (`static/js/charts.js`) ; icônes SVG intégrées
 - Pillow (vérification des images), mysqlclient (MySQL/MariaDB), psycopg 3 (PostgreSQL), python-dotenv (fichier `.env`)
+- Suggestions d’activités et conseils de coaching d’équipe générés par Gemini à partir des informations et statistiques de l’équipe
 - Aucun CDN n’est nécessaire : seules les polices Google Fonts sont chargées de façon facultative et non bloquante (repli sur les polices système hors ligne)
 
 ---
@@ -198,7 +199,11 @@ python -c "from django.core.management.utils import get_random_secret_key as g; 
 - **Avec PostgreSQL** : mettez `DB_ENGINE=postgresql` et complétez les variables `POSTGRES_*`.
 - **Premier essai sans service de base de données** : mettez `DB_ENGINE=sqlite`. Un fichier `db.sqlite3` sera créé. Sans fichier `.env`, l’application utilise SQLite et une clé de développement (uniquement en mode `DJANGO_DEBUG=True`).
 
-### 5.3 Base de données, administrateur, données de démonstration
+### 5.3 IA Gemini pour les équipes
+
+Créez une clé API dans [Google AI Studio](https://aistudio.google.com/apikey), puis définissez `GEMINI_API_KEY` dans votre `.env` local et dans les variables d’environnement de Render. Ne placez jamais la clé dans le code ou dans le dépôt. Le fournisseur Gemini est configuré par `ECOTEAMS_AI_PROVIDER=gemini`; le modèle par défaut est `gemini-flash-lite-latest` et peut être changé avec `ECOTEAMS_TEAM_AI_MODEL`. Depuis une page d’équipe, les boutons permettent de générer quatre idées d’activités ou d’obtenir un conseil fondé sur des statistiques agrégées. La description de l’équipe est transmise à Gemini pour générer les idées ; le coach ne reçoit pas les noms des membres ni leur description individuelle. Vérifiez les limites et les conditions de confidentialité du niveau gratuit de Gemini avant de l’utiliser.
+
+### 5.4 Base de données, administrateur, données de démonstration
 
 ```powershell
 python manage.py migrate

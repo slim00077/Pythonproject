@@ -40,6 +40,11 @@
     </div>
     <div class="card">
       <div class="card-head"><h2>{% icon 'users' %} Participants</h2><span class="pill tone-muted">{{ participant_total }}</span></div>
+      {% if can_manage_attendance %}
+        <a class="btn btn-secondary btn-sm mb-2" href="{% url 'community:attendance' event.slug %}">
+          {% icon 'check-circle' 16 %} Gérer les présences
+        </a>
+      {% endif %}
       {% if participations %}
         <div class="grid grid-2" style="gap:10px">
           {% for p in participations %}
@@ -53,10 +58,69 @@
   </div>
   <aside class="stack">
     <div class="card card-glass">
+      {% if is_organizer and event.status == 'published' and not event.has_ended %}
+        <section class="mb-3" aria-labelledby="attendance-forecast-title">
+          <h3 id="attendance-forecast-title">{% icon 'activity' 18 %} Prévision de participation</h3>
+          {% if participation_forecast %}
+            {% if participation_forecast.registrations %}
+              <p>Sur {{ participation_forecast.registrations }} inscrit{{ participation_forecast.registrations|pluralize }}, environ <strong>{{ participation_forecast.expected_attendance|floatformat:1 }}</strong> présence(s) sont attendues.</p>
+              <p class="small muted">Risque moyen d’absence estimé : {{ participation_forecast.absence_percentage }} %.</p>
+              {% if participation_forecast.is_high_absence_risk %}
+                <div class="alert alert-warning">
+                  <p><strong>Risque élevé d’absence.</strong> Le seuil d’alerte est de 30 %.</p>
+                </div>
+              {% endif %}
+              {% if risk_reminder_count %}
+                <form method="post" action="{% url 'community:remind_risk' event.slug %}">
+                  {% csrf_token %}
+                  <button class="btn btn-secondary btn-block" type="submit">
+                    {% icon 'bell' 16 %} Rappeler {{ risk_reminder_count }} participant{{ risk_reminder_count|pluralize }} à risque
+                  </button>
+                </form>
+              {% endif %}
+            {% else %}
+              <p class="small muted">Aucune inscription à évaluer pour le moment.</p>
+            {% endif %}
+          {% else %}
+            <p class="small muted">Historique de présence insuffisant : enregistrez les présences après les événements pour activer cette prévision.</p>
+          {% endif %}
+        </section>
+      {% endif %}
       {% if event.kind == 'campaign' %}
         <h3>{% icon 'megaphone' 18 %} Progression de la campagne</h3>
         <div class="progress-meta mt-0 mb-1"><span>Temps écoulé</span><span>{{ event.time_progress }} %</span></div>
         <div class="progress mb-2"><div class="progress-bar cyan" style="width:0" data-width="{{ event.time_progress }}"></div></div>
+        <div class="divider"></div>
+        <h3>{% icon 'leaf' 18 %} Impact écologique estimé</h3>
+        {% if impact_estimate %}
+          <div class="kv">
+            <dt>CO₂ économisé estimé</dt><dd>{{ impact_estimate.co2_saved_kg|floatformat:3 }} kg</dd>
+            <dt>Points potentiels</dt><dd>{{ impact_estimate.potential_points }} pts</dd>
+            <dt>Base de calcul</dt><dd>{{ impact_estimate.participants }} participant{{ impact_estimate.participants|pluralize }} · {{ impact_estimate.duration_days|floatformat:2 }} jour(s)</dd>
+          </div>
+          <p class="small muted mt-1">Estimation indicative fondée sur un facteur modifiable par l’administration.</p>
+        {% else %}
+          <p class="small muted">Estimation indisponible : vérifiez le facteur de cette catégorie et l’objectif, la capacité ou les inscriptions.</p>
+        {% endif %}
+        {% if event.actual_co2_saved_kg is not None %}
+          <div class="alert alert-success mt-2">
+            <p><strong>Résultat réel :</strong> {{ event.actual_co2_saved_kg|floatformat:3 }} kg CO₂ économisé.</p>
+            {% if impact_comparison %}
+              {% if impact_comparison.relation == 'equal' %}<p>Le résultat correspond à l’estimation.</p>
+              {% elif impact_comparison.relation == 'above' %}<p>{{ impact_comparison.difference_kg|floatformat:3 }} kg de plus que l’estimation.</p>
+              {% else %}<p>{{ impact_comparison.difference_kg|floatformat:3 }} kg de moins que l’estimation.</p>{% endif %}
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if can_record_impact %}
+          <form method="post" action="{% url 'community:record_impact' event.slug %}" class="mt-2">
+            {% csrf_token %}
+            {% include 'partials/field.html' with field=impact_form.actual_co2_saved_kg %}
+            <button class="btn btn-secondary btn-block" type="submit">
+              {% icon 'check' 16 %} {% if event.actual_co2_saved_kg is not None %}Mettre à jour le résultat réel{% else %}Enregistrer le résultat réel{% endif %}
+            </button>
+          </form>
+        {% endif %}
       {% endif %}
       {% if event.participation_progress is not None %}
         <div class="progress-meta mt-0 mb-1"><span>{% if event.participation_goal %}Objectif de participants{% else %}Places occupées{% endif %}</span><span>{{ event.participation_progress }} %</span></div>

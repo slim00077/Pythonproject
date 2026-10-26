@@ -1,5 +1,5 @@
 {% extends 'layouts/app.html' %}
-{% load eco_tags %}
+{% load eco_tags static %}
 {% block title %}{% if is_create %}Proposer un événement{% else %}Modifier l’événement{% endif %}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -13,6 +13,23 @@
   {% if event.review_notes and event.status == 'draft' %}<div class="alert alert-warning mb-2">{% icon 'alert-triangle' %}<div><strong>Retour de la validation</strong><p>{{ event.review_notes }}</p></div></div>{% endif %}
   <form method="post" novalidate>
     {% csrf_token %}
+    {% if can_generate_ai %}
+      <div class="mb-2">
+        <button class="btn btn-secondary" type="button" data-ai-generate
+                data-endpoint="{% url 'community:ai_generate' %}"
+                data-event-slug="{{ event.slug|default:'' }}">
+          {% icon 'sparkles' 18 %} Générer avec l’IA
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+        <p class="small muted mt-1" data-ai-status role="status" aria-live="polite"></p>
+        <button class="btn btn-ghost btn-sm" type="button" data-suggest-tags
+                data-endpoint="{% url 'community:tag_suggestions' %}">
+          {% icon 'tag' 16 %} Suggérer une catégorie et des tags
+        </button>
+        <p class="small muted mt-1" data-tag-status role="status" aria-live="polite"></p>
+        <div class="row" data-tag-results hidden></div>
+      </div>
+    {% endif %}
     {% include 'partials/form_fields.html' %}
     <div class="form-actions">
       <a class="btn btn-ghost" href="{% if event %}{{ event.get_absolute_url }}{% else %}{% url 'community:list' %}{% endif %}">Annuler</a>
@@ -20,4 +37,8 @@
     </div>
   </form>
 </div>
+{% endblock %}
+{% block scripts %}
+  {{ block.super }}
+  {% if can_generate_ai %}<script src="{% static 'js/community-ai.js' %}" defer></script>{% endif %}
 {% endblock %}

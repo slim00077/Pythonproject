@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+load_dotenv()  # Load .env file if present, but don't fail if it's missing
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -230,6 +231,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 ECOTEAMS_MAX_UPLOAD_MB = int(os.environ.get('ECOTEAMS_MAX_UPLOAD_MB', '5'))
 FILE_UPLOAD_PERMISSIONS = 0o644
 
+# Community AI helpers
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'template')
+AI_API_KEY = os.environ.get('AI_API_KEY', '')
+AI_MODEL = os.environ.get('AI_MODEL', 'gpt-4o-mini')
+AI_TIMEOUT = float(os.environ.get('AI_TIMEOUT', '10'))
+AI_API_BASE_URL = os.environ.get('AI_API_BASE_URL', 'https://api.openai.com/v1')
+
 
 # Security
 
@@ -266,6 +274,7 @@ ECOTEAMS_DEFAULT_ROLE = 'Utilisateur'
 ECOTEAMS_TEAM_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000]
 ECOTEAMS_SUBMISSION_MAX_AGE_DAYS = int(os.environ.get('ECOTEAMS_SUBMISSION_MAX_AGE_DAYS', '30'))
 ECOTEAMS_EVENT_REMINDER_HOURS = int(os.environ.get('ECOTEAMS_EVENT_REMINDER_HOURS', '48'))
+ECOTEAMS_TEAM_AI_MODEL = os.environ.get('ECOTEAMS_TEAM_AI_MODEL', 'gemini-flash-lite-latest')
 
 
 # Coach IA des objectifs (goals/ai.py). Les clés ne sont JAMAIS dans le code : variables d'environnement.

@@ -168,6 +168,61 @@ def complete_event(reviewer, event):
                  link=event.get_absolute_url())
 
 
+@transaction.atomic
+def record_campaign_impact(user, event, actual_co2_saved_kg):
+    if not is_event_manager(user, event):
+        raise BusinessRuleError('Seul l’organisateur peut enregistrer le résultat de la campagne.')
+    if (
+        event.kind != Event.Kind.CAMPAIGN or not event.has_ended
+        or event.status not in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    ):
+        raise BusinessRuleError('Le résultat réel ne peut être saisi qu’après une campagne terminée.')
+    event.actual_co2_saved_kg = actual_co2_saved_kg
+    event.save(update_fields=['actual_co2_saved_kg', 'updated_at'])
+
+
+@transaction.atomic
+def record_event_attendance(user, event, participation, attended):
+    if not is_event_manager(user, event):
+        raise BusinessRuleError('Seul l’organisateur peut enregistrer les présences.')
+    if attended is not None and not isinstance(attended, bool):
+        raise BusinessRuleError('Choisissez une présence valide.')
+    if (
+        event.end_at >= timezone.now()
+        or event.status not in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    ):
+        raise BusinessRuleError('Les présences ne peuvent être enregistrées qu’après l’événement.')
+    if participation.event_id != event.pk:
+        raise BusinessRuleError('Cette inscription ne correspond pas à l’événement.')
+    participation.attended = attended
+    participation.save(update_fields=['attended'])
+
+
+@transaction.atomic
+def send_absence_risk_reminders(user, event):
+    if not is_event_manager(user, event):
+        raise BusinessRuleError('Seul l’organisateur peut envoyer des rappels.')
+    if event.status != Event.Status.PUBLISHED or event.end_at < timezone.now():
+        raise BusinessRuleError('Les rappels ne sont disponibles que pour un événement à venir.')
+
+    from community.ai.participation import predict_event_participation
+
+    forecast = predict_event_participation(event)
+    if forecast is None:
+        raise BusinessRuleError('L’historique des présences est insuffisant pour prédire les absences.')
+    at_risk = [item for item in forecast.at_risk_participations if not item.reminder_sent]
+    if not at_risk:
+        raise BusinessRuleError('Aucun participant à risque n’attend de rappel.')
+
+    sent = notify_many(
+        [item.user for item in at_risk], Notification.Kind.EVENT, f'Rappel : {event.title}',
+        f'Vous êtes inscrit·e à « {event.title} ». Pensez à confirmer votre participation.',
+        event.get_absolute_url(),
+    )
+    EventParticipation.objects.filter(pk__in=[item.pk for item in at_risk]).update(reminder_sent=True)
+    return sent
+
+
 AUDIENCE_CATEGORY = {
     Audience.STUDENTS: ('student',),
     Audience.EMPLOYEES: ('employee',),

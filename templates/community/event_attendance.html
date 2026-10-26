@@ -1,0 +1,43 @@
+{% extends 'layouts/app.html' %}
+{% load eco_tags %}
+{% block title %}Présences — {{ event.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <nav class="breadcrumb"><a href="{{ event.get_absolute_url }}">{{ event.title }}</a> {% icon 'chevron-right' 14 %} Présences</nav>
+    <h1>Présences des participants</h1>
+    <p class="page-sub">Enregistrez les présences vérifiées après l’événement. Les états « à confirmer » ne sont pas utilisés comme absences.</p>
+  </div>
+</div>
+<div class="card">
+  {% if page.object_list %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Participant</th><th>Inscrit le</th><th>Présence</th><th></th></tr></thead>
+        <tbody>
+          {% for participation in page %}
+            <tr>
+              <td>{{ participation.user|display_name }}</td>
+              <td>{{ participation.joined_at|date:'d/m/Y H:i' }}</td>
+              <td>
+                <form method="post" action="{% url 'community:attendance' event.slug %}" class="row">
+                  {% csrf_token %}
+                  <input type="hidden" name="participation_id" value="{{ participation.pk }}">
+                  <input type="hidden" name="page" value="{{ page.number }}">
+                  <label class="sr-only" for="{{ participation.attendance_form.attended.id_for_label }}">Présence de {{ participation.user|display_name }}</label>
+                  {{ participation.attendance_form.attended }}
+                  <button class="btn btn-secondary btn-sm" type="submit">Enregistrer</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include 'partials/pagination.html' %}
+  {% else %}
+    {% include 'partials/empty.html' with icon='users' title='Aucun participant inscrit' %}
+  {% endif %}
+  <div class="form-actions mt-2"><a class="btn btn-ghost" href="{{ event.get_absolute_url }}">Retour à l’événement</a></div>
+</div>
+{% endblock %}

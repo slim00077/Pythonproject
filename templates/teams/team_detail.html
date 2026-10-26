@@ -40,6 +40,47 @@
   </div>
 </section>
 
+<section class="card mt-3">
+  <div class="card-head">
+    <div><h2>{% icon 'leaf' %} Idées d’activités avec l’IA</h2></div>
+  </div>
+  {% if request.user.is_authenticated %}
+    <form method="post" action="{% url 'teams:activity_ideas' team.slug %}">
+      {% csrf_token %}
+      <button class="btn btn-secondary" type="submit">{% icon 'sparkles' 16 %} Générer quatre idées</button>
+    </form>
+  {% endif %}
+  {% if activity_ideas %}
+    <div class="grid grid-2 mt-2" aria-live="polite">
+      {% for idea in activity_ideas %}
+        <article class="card">
+          <h3>{{ idea.title }}</h3>
+          <p>{{ idea.objective }}</p>
+          <ol>
+            {% for step in idea.steps %}<li>{{ step }}</li>{% endfor %}
+          </ol>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
+<section class="card mt-3">
+  <div class="card-head"><div><h2>{% icon 'trending-up' %} Coach de l’équipe</h2></div></div>
+  <form method="post" action="{% url 'teams:coach' team.slug %}">
+    {% csrf_token %}
+    <button class="btn btn-secondary" type="submit">{% icon 'sparkles' 16 %} Obtenir un conseil</button>
+  </form>
+  {% if coach_advice %}
+    <div class="mt-2" aria-live="polite">
+      <p>{{ coach_advice.assessment }}</p>
+      <h3>Prochaine action suggérée</h3>
+      <p>{{ coach_advice.recommendation }}</p>
+      <ol>{% for step in coach_advice.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+    </div>
+  {% endif %}
+</section>
+
 <div class="grid grid-4 mb-3">
   <div class="card stat"><span class="stat-icon">{% icon 'leaf' 22 %}</span><div><div class="stat-label">Actions validées</div><div class="stat-value">{{ stats.approved_actions }}</div><div class="stat-hint">créditées à l’équipe</div></div></div>
   <div class="card stat"><span class="stat-icon cyan">{% icon 'flag' 22 %}</span><div><div class="stat-label">Défis réussis</div><div class="stat-value">{{ stats.completed_challenges }}</div><div class="stat-hint">{{ stats.challenge_completion_rate }} % des participations</div></div></div>
